@@ -3,9 +3,9 @@
 #include "../defines.h"
 
 // Disable assertions by commenting out the below line.
-#define KASSERTIONS_ENABLED
+#define CASSERTIONS_ENABLED
 
-#ifdef KASSERTIONS_ENABLED
+#ifdef CASSERTIONS_ENABLED
 #if _MSC_VER
 #include <intrin.h>
 #define debugBreak() __debugbreak()
@@ -13,9 +13,9 @@
 #define debugBreak() __builtin_trap()
 #endif
 
-KAPI void report_assertion_failure(const char* expression, const char* message, const char* file, i32 line);
+CAPI void report_assertion_failure(const char* expression, const char* message, const char* file, i32 line);
 
-#define KASSERT(expr)                                                   \
+#define CASSERT(expr)                                                   \
     {                                                                   \
         if (expr) {                                                     \
         }else {                                                         \
@@ -24,7 +24,7 @@ KAPI void report_assertion_failure(const char* expression, const char* message, 
         }                                                               \
     }                          
 
-#define KASSERT_MSG(expr, message)                                       \
+#define CASSERT_MSG(expr, message)                                       \
     {                                                                    \
         if (expr) {                                                      \
         }else {                                                          \
@@ -34,7 +34,7 @@ KAPI void report_assertion_failure(const char* expression, const char* message, 
     }                          
 
 #ifdef _DEBUG
-#define KASSERT_DEBUG(expr)                                              \
+#define CASSERT_DEBUG(expr)                                              \
     {                                                                    \
         if (expr) {                                                      \
         }else {                                                          \
@@ -43,11 +43,11 @@ KAPI void report_assertion_failure(const char* expression, const char* message, 
         }                                                                \
     }  
 #else 
-#define KASSERT_DEBUG(expr) // DOES nothing
+#define CASSERT_DEBUG(expr) // DOES nothing
 #endif
 
 #else
-#define KASSERT(expr) //does nothing
-#define KASSERT_MSG(expr) //does nothing
-#define KASSERTDEBU(expr) //does nothing
+#define CASSERT(expr) //does nothing
+#define CASSERT_MSG(expr) //does nothing
+#define CASSERTDEBU(expr) //does nothing
 #endif

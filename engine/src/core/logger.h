@@ -8,7 +8,7 @@
 #define LOG_TRACE_ENABLED 1
 
 // Disable debug and trace logging for release builds.
-#if KRELEASE == 1
+#if CRELEASE == 1
 #define LOG_TRACE_ENABLED 0
 #define LOGLOG_DUBEG_ENABLED 0
 #endif
@@ -26,45 +26,45 @@ typedef enum log_level {
 b8 initialize_logging();
 void shutdown_logging();
 
-KAPI void log_output(log_level level, const char* message, ...);
+CAPI void log_output(log_level level, const char* message, ...);
 
 // Logs a fatal-level message.
-#define KFATAL(message, ...) log_output(LOG_LEVEL_FATAL, message, ##__VA_ARGS__);
+#define CFATAL(message, ...) log_output(LOG_LEVEL_FATAL, message, ##__VA_ARGS__);
 
-#ifndef KERROR
+#ifndef CERROR
 // Logs a error-level message.
-#define KERROR(message, ...) log_output(LOG_LEVEL_ERROR, message, ##__VA_ARGS__);
+#define CERROR(message, ...) log_output(LOG_LEVEL_ERROR, message, ##__VA_ARGS__);
 #endif
 
 #if LOG_WARN_ENABLED == 1
 // Logs a warning-level message.
-#define KWARN(message, ...) log_output(LOG_LEVEL_WARN, message, ##__VA_ARGS__);
+#define CWARN(message, ...) log_output(LOG_LEVEL_WARN, message, ##__VA_ARGS__);
 #else
 // Does nothing when LOG_WARN_ENABLED != 1
-#define KWARN(message, ...)
+#define CWARN(message, ...)
 #endif
 
 #if LOG_INFO_ENABLED == 1
 // Logs a info-level message.
-#define KINFO(message, ...) log_output(LOG_LEVEL_INFO, message, ##__VA_ARGS__);
+#define CINFO(message, ...) log_output(LOG_LEVEL_INFO, message, ##__VA_ARGS__);
 #else
 // Does nothing when LOG_INFO_ENABLED != 1
-#define KINFO(message, ...)
+#define CINFO(message, ...)
 #endif
 
 
 #if LOG_DEBUG_ENABLED == 1
 // Logs a info-level message.
-#define KDEBUG(message, ...) log_output(LOG_LEVEL_DEBUG, message, ##__VA_ARGS__);
+#define CDEBUG(message, ...) log_output(LOG_LEVEL_DEBUG, message, ##__VA_ARGS__);
 #else
 // Does nothing when LOG_INFO_ENABLED != 1
-#define KDEBUG(message, ...)
+#define CDEBUG(message, ...)
 #endif
 
 #if LOG_TRACE_ENABLED == 1
 // Logs a info-level message.
-#define KTRACE(message, ...) log_output(LOG_LEVEL_TRACE, message, ##__VA_ARGS__);
+#define CTRACE(message, ...) log_output(LOG_LEVEL_TRACE, message, ##__VA_ARGS__);
 #else
 // Does nothing when LOG_INFO_ENABLED != 1
-#define KTRACE(message, ...)
+#define CTRACE(message, ...)
 #endif

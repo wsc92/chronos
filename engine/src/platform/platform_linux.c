@@ -1,8 +1,9 @@
 #include "platform.h"
+#include <bits/time.h>
 #include <xcb/xproto.h>
 
 // Linux platform layer.
-#if KPLATFORM_LINUX
+#if CPLATFORM_LINUX
 
 #include "../core/logger.h"
 
@@ -29,7 +30,7 @@ typedef struct internal_state {
     xcb_window_t window;
     xcb_screen_t *screen;
     xcb_atom_t wm_protocols;
-    xcb_atom_t wm_delete_wm;
+    xcb_atom_t wm_delete_win;
 } internal_state;
 
 b8 platform_startup(platform_state* plat_state, const char* application_name, i32 x, i32 y, i32 width, i32 height)
@@ -48,7 +49,7 @@ b8 platform_startup(platform_state* plat_state, const char* application_name, i3
     state->connection = XGetXCBConnection(state->display);
 
     if (xcb_connection_has_error(state->connection)) {
-        KFATAL("Failed to connect to X server via XCB.");
+        CFATAL("Failed to connect to X server via XCB.");
         return FALSE;
     }
 
@@ -129,7 +130,7 @@ b8 platform_startup(platform_state* plat_state, const char* application_name, i3
             state->connection,
             wm_protocols_cookie,
             NULL);
-    state->wm_delete_wm = wm_delete_reply->atom;
+    state->wm_delete_win = wm_delete_reply->atom;
     state->wm_protocols = wm_protocols_reply->atom;
 
     xcb_change_property(
@@ -148,41 +149,125 @@ b8 platform_startup(platform_state* plat_state, const char* application_name, i3
     // Flush the stream
     i32 stream_result = xcb_flush(state->connection);
     if (stream_result <= 0) {
-        KFATAL("An error occured when flushing the stream: %d", stream_result);
+        CFATAL("An error occured when flushing the stream: %d", stream_result);
         return FALSE;
     }
 
     return TRUE;
 }
 
-// TODO: KOHI #5 20:14 timestamp 
-// complete all these methods
-// 
-void platform_shutdown(platform_state* plat_state) {
 
+void platform_shutdown(platform_state* plat_state) {
+    // Simply cold-cast to the known type.
+    internal_state *state = (internal_state *)plat_state->internal_state;
+
+    // Turn key repeats back on since this is global for the OS.... Just.... Wow.....
+    XAutoRepeatOn(state->display);
+
+    xcb_destroy_window(state->connection, state->window);
 }
 
 b8 platform_pump_messages(platform_state* plat_state) {
+    //Simply cold casst to the known state type
+    internal_state *state = (internal_state *)plat_state->internal_state;
 
+    xcb_generic_event_t *event;
+    xcb_client_message_event_t *cm;
+
+    b8 quit_flagged = FALSE;
+
+    // Poll for events until null is returned.
+    while (event != 0) {
+        event = xcb_poll_for_event(state->connection);
+        if (event ==0) {
+            break;
+        }
+
+        //input events
+        switch (event->response_type & ~0x80) {
+            case XCB_KEY_PRESS: 
+            case XCB_KEY_RELEASE: {
+                //TODO:Key Presses and releases
+            } break;
+            case XCB_BUTTON_PRESS:
+            case XCB_BUTTON_RELEASE: {
+                // TODO: Mouse button presses and releases
+            }
+            case XCB_MOTION_NOTIFY:
+                //TODO: mouse movement
+            break;
+
+            case XCB_CONFIGURE_NOTIFY: {
+                //TODO: RESIZING
+            }
+
+            case XCB_CLIENT_MESSAGE: {
+                cm = (xcb_client_message_event_t *) event;
+
+                // Window Close
+                if (cm->data.data32[0] == state->wm_delete_win) {
+                    quit_flagged = TRUE;
+                }
+            } break;
+            default:
+                // Something else
+                break;
+        }
+
+        free(event);
+    }
+    return !quit_flagged;
 }
 
-void* platform_allocate(u64 size, b8 alligned){}
-void platform_free(void* block, b8 alligned){}
-void* platform_zero_memory(void* block, u64 size){}
-void* platform_copy_memory(void* dest, const void* source, u64 size){}
-void* platform_set_memory(void* dest, i32 value, u64 size){}
+void* platform_allocate(u64 size, b8 alligned) {
+    return malloc(size);
+}
+void platform_free(void* block, b8 alligned) {
+    free(block);
+}
+void* platform_zero_memory(void* block, u64 size) {
+    return memset(block, 0, size);
+}
+void* platform_copy_memory(void* dest, const void* source, u64 size) {
+    return memcpy(dest, source, size);
+}
+void* platform_set_memory(void* dest, i32 value, u64 size) {
+    return memset(dest, value, size);
+}
 
-void platform_console_write(const char* message, u8 colour){}
-void platform_console_write_error(const char* message, u8 colour){}
+void platform_console_write(const char* message, u8 colour) {
+    // FATAL, ERROR, WARN, INFO, DEBUG, TRACE
+    const char* colour_strings[] = {"0;41", "1;31", "1;33", "1;32", "1;34", "1;37"};
+    printf("\033[%sm%s\033[0m", colour_strings[colour], message);
+
+}
+void platform_console_write_error(const char* message, u8 colour) {
+    // FATAL, ERROR, WARN, INFO, DEBUG, TRACE
+    const char* colour_strings[] = {"0;41", "1;31", "1;33", "1;32", "1;34", "1;37"};
+    printf("\033[%sm%s\033[0m", colour_strings[colour], message);
+}
 
 f64 platform_get_absolute_time() {
-
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    return now.tv_sec + now.tv_nsec * 0.0000000001;
 }
 
 // Sleep on the thread for the provided ms. This blocks the main thread.
 // Should only be used for giving time back to the OS for unused update power.
 // Therefore it is not exported.
 void platform_sleep(u64 ms) {
-
+#if _POSIX_C_SOURCE >= 199309L
+    struct timespec ts;
+    ts.tv_sec = ms / 1000;
+    ts.tv_nsec = (ms % 1000) * 1000* 1000;
+    nanosleep(&ts, 0);
+#else
+    if (ms >=1000) {
+        sleep(ms / 1000);
+    }
+    usleep((ms % 1000) * 1000);
+#endif
 }
+
 #endif
