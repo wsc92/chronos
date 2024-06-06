@@ -3,7 +3,7 @@
 #include "logger.h"
 #include "../platform/platform.h"
 
-// TODO: Custom String Lib
+// TODO: Custom String Lib at some point
 #include <string.h>
 #include <stdio.h>
 
