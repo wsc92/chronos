@@ -137,6 +137,16 @@ b8 vulkan_renderer_backend_initialize(struct renderer_backend* backend, const ch
 }
 
 void vulkan_renderer_backend_shutdown(struct renderer_backend* backend) {
+    //Destroy in the opposite order of creation.
+
+    CDEBUG("Destroying Vulkan device...");
+    vulkan_device_destroy(&context);
+
+    CDEBUG("Destroying Vulkan surface...");
+    if (context.surface) {
+        vkDestroySurfaceKHR(context.instance, context.surface, context.allocator);
+        context.surface = 0;
+    }
 
     CDEBUG("Destroying Vulkan debugger...");
     if (context.debug_messenger) {
