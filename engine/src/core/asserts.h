@@ -22,7 +22,7 @@ CAPI void report_assertion_failure(const char* expression, const char* message, 
             report_assertion_failure(#expr, "", __FILE__, __LINE__);    \
             debugBreak();                                               \
         }                                                               \
-    }                          
+    }
 
 #define CASSERT_MSG(expr, message)                                       \
     {                                                                    \
@@ -31,7 +31,7 @@ CAPI void report_assertion_failure(const char* expression, const char* message, 
             report_assertion_failure(#expr, message, __FILE__, __LINE__);\
             debugBreak();                                                \
         }                                                                \
-    }                          
+    }
 
 #ifdef _DEBUG
 #define CASSERT_DEBUG(expr)                                              \
@@ -41,8 +41,8 @@ CAPI void report_assertion_failure(const char* expression, const char* message, 
             report_assertion_failure(#expr, "", __FILE__, __LINE__);     \
             debugBreak();                                                \
         }                                                                \
-    }  
-#else 
+    }
+#else
 #define CASSERT_DEBUG(expr) // DOES nothing
 #endif
 
