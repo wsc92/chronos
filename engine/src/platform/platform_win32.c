@@ -6,9 +6,11 @@
 #include "../core/logger.h"
 #include "../core/input.h"
 #include "../core/event.h"
+#include "../containers/darray.h"
 
 #include <windows.h>
 #include <windowsx.h>
+#include <stdlib.h>
 
 // For surface creation
 #include <vulkan/vulkan.h>
@@ -41,7 +43,7 @@ b8 platform_startup(
     state->h_instance = GetModuleHandleA(0);
 
     //Setup and register window class.
-    HICON icon = LoadIcon(state->h_instance, IDI_APPPLICATION);
+    HICON icon = LoadIcon(state->h_instance, IDI_APPLICATION);
     WNDCLASSA wc;
     memset(&wc, 0, sizeof(wc));
     wc.style = CS_DBLCLKS; //get double clicks
@@ -49,7 +51,7 @@ b8 platform_startup(
     wc.cbClsExtra = 0;
     wc.cbWndExtra = 0;
     wc.hInstance = state->h_instance;
-    wc.hICon = icon;
+    wc.hIcon = icon;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW); // NULL; // Manage the cursor manually.
     wc.hbrBackground = NULL; //transparent
     wc.lpszClassName = "chronos_window_class";
@@ -61,7 +63,7 @@ b8 platform_startup(
 
     //create window
     u32 client_x = x;
-    u32 client-y = y;
+    u32 client_y = y;
     u32 client_width = width;
     u32 client_height = height;
 
@@ -70,12 +72,12 @@ b8 platform_startup(
     u32 window_width = client_width;
     u32 window_height = client_height;
 
-    u32 window_style = WS_OVERLAPPED | ws_SYSMENU | WS_CAPTION;
+    u32 window_style = WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION;
     u32 window_ex_style = WS_EX_APPWINDOW;
 
-    window_style != WS_MAXIMIZEBOX;
-    window_style != WS_MINIMIZEBOX;
-    window_style != WS_THICKFRAME;
+    window_style |= WS_MAXIMIZEBOX;
+    window_style |= WS_MINIMIZEBOX;
+    window_style |= WS_THICKFRAME;
 
     //Obtaine the size of border.
     RECT border_rect = {0, 0, 0, 0};
@@ -86,8 +88,8 @@ b8 platform_startup(
     window_y += border_rect.top;
 
     // Grow by the size of the OS border.
-    window_width += boder_rect.right - border_rect.left;
-    window_height += boder_rect.bottom - border_rect.top;
+    window_width += border_rect.right - border_rect.left;
+    window_height += border_rect.bottom - border_rect.top;
     
     HWND handle = CreateWindowExA(
             window_ex_style, "chronos_window_class", application_name,
@@ -162,22 +164,22 @@ void platform_console_write(const char* message, u8 colour) {
     HANDLE console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
     //FATAL,ERROR,WARN,INFO,DEBUG,TRACE
     static u8 levels[6] = {64, 4, 6, 2, 1, 8};
-    SetConsoleTextAttribute(console_handle, level[colour]);
+    SetConsoleTextAttribute(console_handle, levels[colour]);
     OutputDebugStringA(message);
     u64 length = strlen(message);
     LPDWORD number_written = 0;
-    writeConsoleA(GetStdHandle(STD_OUTPUT_HANDLE), message, (DWORD)length, number_written, 0);
+    WriteConsoleA(GetStdHandle(STD_OUTPUT_HANDLE), message, (DWORD)length, number_written, 0);
 }
 
 void platform_console_write_error(const char* message, u8 colour) {
     HANDLE console_handle = GetStdHandle(STD_ERROR_HANDLE);
     //FATAL,ERROR,WARN,INFO,DEBUG,TRACE
     static u8 levels[6] = {64, 4, 6, 2, 1, 8};
-    SetConsoleTextAttribute(console_handle, level[colour]);
+    SetConsoleTextAttribute(console_handle, levels[colour]);
     OutputDebugStringA(message);
     u64 length = strlen(message);
     LPDWORD number_written = 0;
-    writeConsoleA(GetStdHandle(STD_ERROR_HANDLE), message, (DWORD)length, number_written, 0);
+    WriteConsoleA(GetStdHandle(STD_ERROR_HANDLE), message, (DWORD)length, number_written, 0);
 }
 
 f64 platform_get_absolute_time() {
@@ -284,10 +286,10 @@ LRESULT CALLBACK win32_process_message(HWND hwnd, u32 msg, WPARAM w_param, LPARA
                     mouse_button = BUTTON_MIDDLE;
                     break;
                 case WM_RBUTTONDOWN:
-                case WM_RBUTTONUP:
-                    mouse_button = BUTTON_RIGHT
+                case WM_RBUTTONUP: 
+                    mouse_button = BUTTON_RIGHT;
                     break;
-            }
+        } break;
 
             //Pass over to the input system
             if (mouse_button != BUTTON_MAX_BUTTONS) {

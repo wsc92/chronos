@@ -1,6 +1,5 @@
 #include "platform.h"
-#include <bits/time.h>
-#include <xcb/xproto.h>
+
 
 // Linux platform layer.
 #if CPLATFORM_LINUX
@@ -17,6 +16,8 @@
 #include <X11/Xlib.h>
 #include <X11/Xlib-xcb.h>
 #include <sys/time.h>
+#include <bits/time.h>
+#include <xcb/xproto.h>
 
 #if _POSIX_C_SOURCE >= 199309L
 #include <time.h> // nanosleep
