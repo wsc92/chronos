@@ -40,7 +40,8 @@ void vulkan_command_buffer_begin(
         b8 is_single_use,
         b8 is_renderpass_continue,
         b8 is_simultaneous_use) {
-    VkCommandBufferBeginInfo begin_info;
+
+    VkCommandBufferBeginInfo begin_info = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     begin_info.flags = 0;
     if (is_single_use) {
         begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
