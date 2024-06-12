@@ -8,7 +8,7 @@
 static renderer_backend* backend = 0;
 
 b8 renderer_initialize(const char* application_name, struct platform_state* plat_state) {
-    backend = kallocate(sizeof(renderer_backend), MEMORY_TAG_RENDERER);
+    backend = callocate(sizeof(renderer_backend), MEMORY_TAG_RENDERER);
 
     // TODO: make this configurable.
     renderer_backend_create(RENDERER_BACKEND_TYPE_VULKAN, plat_state, backend);
@@ -24,7 +24,7 @@ b8 renderer_initialize(const char* application_name, struct platform_state* plat
 
 void renderer_shutdown() {
     backend->shutdown(backend);
-    kfree(backend, sizeof(renderer_backend), MEMORY_TAG_RENDERER);
+    cfree(backend, sizeof(renderer_backend), MEMORY_TAG_RENDERER);
 }
 
 b8 renderer_begin_frame(f32 delta_time) {

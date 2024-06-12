@@ -420,9 +420,10 @@ keys translate_keycode(u32 x_keycode) {
             return KEY_LWIN;  
         case XK_Super_R:
             return KEY_RWIN;
-            // case XK_apps: return KEY_APPS; // not supported
 
-            // case XK_sleep: return KEY_SLEEP; //not supported
+        // case XK_apps: return KEY_APPS; // not supported
+
+        // case XK_sleep: return KEY_SLEEP; //not supported
 
         case XK_KP_0:
             return KEY_NUMPAD0;
@@ -521,9 +522,10 @@ keys translate_keycode(u32 x_keycode) {
             return KEY_LCONTROL;
         case XK_Control_R:
             return KEY_RCONTROL;
-        // case XK_Menu: return KEY_LMENU;
-        case XK_Menu:
-            return KEY_RMENU;
+        case XK_Alt_L:
+            return KEY_LALT;
+        case XK_Alt_R:
+            return KEY_RALT;
 
         case XK_semicolon:
             return KEY_SEMICOLON;

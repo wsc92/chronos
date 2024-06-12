@@ -6,6 +6,7 @@ typedef enum memory_tag {
     // For temporary use. Should be assigned one of the below or have a new tag created.
     MEMORY_TAG_UNKOWN,
     MEMORY_TAG_ARRAY,
+    MEMORY_TAG_LINEAR_ALLOCATOR,
     MEMORY_TAG_DARRAY,
     MEMORY_TAG_DICT,
     MEMORY_TAG_RING_QUEUE,
@@ -24,13 +25,15 @@ typedef enum memory_tag {
     MEMORY_TAG_MAX_TAGS,
 } memory_tag;
 
-CAPI void initialize_memory();
-CAPI void shutdown_memory();
+CAPI void initialize_memory(u64* memory_requirement, void* state);
+CAPI void shutdown_memory(void* state);
 
-CAPI void* kallocate(u64 size, memory_tag tag);
-CAPI void kfree(void* block, u64 size, memory_tag tag);
-CAPI void* kzero_memory(void* block, u64 size);
-CAPI void* kcopy_memory(void* dest, const void* source, u64 size);
-CAPI void* kset_memory(void* dest, i32 value, u64 size);
+CAPI void* callocate(u64 size, memory_tag tag);
+CAPI void cfree(void* block, u64 size, memory_tag tag);
+CAPI void* czero_memory(void* block, u64 size);
+CAPI void* ccopy_memory(void* dest, const void* source, u64 size);
+CAPI void* cset_memory(void* dest, i32 value, u64 size);
 
 CAPI char* get_memory_usage_str();
+
+CAPI u64 get_memory_alloc_count();

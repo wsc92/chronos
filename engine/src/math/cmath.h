@@ -34,12 +34,12 @@
 // ------------------------------------------
 // General math functions
 // ------------------------------------------
-CAPI f32 csin(f32 x);
-CAPI f32 ccos(f32 x);
-CAPI f32 ctan(f32 x);
-CAPI f32 cacos(f32 x);
-CAPI f32 csqrt(f32 x);
-CAPI f32 cabs(f32 x);
+CAPI f32 ksin(f32 x);
+CAPI f32 kcos(f32 x);
+CAPI f32 ktan(f32 x);
+CAPI f32 kacos(f32 x);
+CAPI f32 ksqrt(f32 x);
+CAPI f32 kabs(f32 x);
 
 /**
  * Indicates if the value is a power of 2. 0 is considered _not_ a power of 2.
@@ -185,7 +185,7 @@ CINLINE f32 vec2_length_squared(vec2 vector) {
  * @return The length.
  */
 CINLINE f32 vec2_length(vec2 vector) {
-    return csqrt(vec2_length_squared(vector));
+    return ksqrt(vec2_length_squared(vector));
 }
 
 /**
@@ -220,11 +220,11 @@ CINLINE vec2 vec2_normalized(vec2 vector) {
  * @return True if within tolerance; otherwise false. 
  */
 CINLINE b8 vec2_compare(vec2 vector_0, vec2 vector_1, f32 tolerance) {
-    if (cabs(vector_0.x - vector_1.x) > tolerance) {
+    if (kabs(vector_0.x - vector_1.x) > tolerance) {
         return false;
     }
 
-    if (cabs(vector_0.y - vector_1.y) > tolerance) {
+    if (kabs(vector_0.y - vector_1.y) > tolerance) {
         return false;
     }
 
@@ -426,7 +426,7 @@ CINLINE f32 vec3_length_squared(vec3 vector) {
  * @return The length.
  */
 CINLINE f32 vec3_length(vec3 vector) {
-    return csqrt(vec3_length_squared(vector));
+    return ksqrt(vec3_length_squared(vector));
 }
 
 /**
@@ -493,15 +493,15 @@ CINLINE vec3 vec3_cross(vec3 vector_0, vec3 vector_1) {
  * @return True if within tolerance; otherwise false. 
  */
 CINLINE const b8 vec3_compare(vec3 vector_0, vec3 vector_1, f32 tolerance) {
-    if (cabs(vector_0.x - vector_1.x) > tolerance) {
+    if (kabs(vector_0.x - vector_1.x) > tolerance) {
         return false;
     }
 
-    if (cabs(vector_0.y - vector_1.y) > tolerance) {
+    if (kabs(vector_0.y - vector_1.y) > tolerance) {
         return false;
     }
 
-    if (cabs(vector_0.z - vector_1.z) > tolerance) {
+    if (kabs(vector_0.z - vector_1.z) > tolerance) {
         return false;
     }
 
@@ -669,7 +669,7 @@ CINLINE f32 vec4_length_squared(vec4 vector) {
  * @return The length.
  */
 CINLINE f32 vec4_length(vec4 vector) {
-    return csqrt(vec4_length_squared(vector));
+    return ksqrt(vec4_length_squared(vector));
 }
 
 /**
@@ -722,7 +722,7 @@ CINLINE f32 vec4_dot_f32(
  */
 CINLINE mat4 mat4_identity() {
     mat4 out_matrix;
-    kzero_memory(out_matrix.data, sizeof(f32) * 16);
+    czero_memory(out_matrix.data, sizeof(f32) * 16);
     out_matrix.data[0] = 1.0f;
     out_matrix.data[5] = 1.0f;
     out_matrix.data[10] = 1.0f;
@@ -797,9 +797,9 @@ CINLINE mat4 mat4_orthographic(f32 left, f32 right, f32 bottom, f32 top, f32 nea
  * @return A new perspective matrix. 
  */
 CINLINE mat4 mat4_perspective(f32 fov_radians, f32 aspect_ratio, f32 near_clip, f32 far_clip) {
-    f32 half_tan_fov = ctan(fov_radians * 0.5f);
+    f32 half_tan_fov = ktan(fov_radians * 0.5f);
     mat4 out_matrix;
-    kzero_memory(out_matrix.data, sizeof(f32) * 16);
+    czero_memory(out_matrix.data, sizeof(f32) * 16);
     out_matrix.data[0] = 1.0f / (aspect_ratio * half_tan_fov);
     out_matrix.data[5] = 1.0f / half_tan_fov;
     out_matrix.data[10] = -((far_clip + near_clip) / (far_clip - near_clip));
@@ -963,8 +963,8 @@ CINLINE mat4 mat4_scale(vec3 scale) {
 
 CINLINE mat4 mat4_euler_x(f32 angle_radians) {
     mat4 out_matrix = mat4_identity();
-    f32 c = ccos(angle_radians);
-    f32 s = csin(angle_radians);
+    f32 c = kcos(angle_radians);
+    f32 s = ksin(angle_radians);
 
     out_matrix.data[5] = c;
     out_matrix.data[6] = s;
@@ -975,8 +975,8 @@ CINLINE mat4 mat4_euler_x(f32 angle_radians) {
 
 CINLINE mat4 mat4_euler_y(f32 angle_radians) {
     mat4 out_matrix = mat4_identity();
-    f32 c = ccos(angle_radians);
-    f32 s = csin(angle_radians);
+    f32 c = kcos(angle_radians);
+    f32 s = ksin(angle_radians);
 
     out_matrix.data[0] = c;
     out_matrix.data[2] = -s;
@@ -988,8 +988,8 @@ CINLINE mat4 mat4_euler_y(f32 angle_radians) {
 CINLINE mat4 mat4_euler_z(f32 angle_radians) {
     mat4 out_matrix = mat4_identity();
 
-    f32 c = ccos(angle_radians);
-    f32 s = csin(angle_radians);
+    f32 c = kcos(angle_radians);
+    f32 s = ksin(angle_radians);
 
     out_matrix.data[0] = c;
     out_matrix.data[1] = s;
@@ -1106,7 +1106,7 @@ CINLINE quat quat_identity() {
 }
 
 CINLINE f32 quat_normal(quat q) {
-    return csqrt(
+    return ksqrt(
         q.x * q.x +
         q.y * q.y +
         q.z * q.z +
@@ -1218,8 +1218,8 @@ CINLINE mat4 quat_to_rotation_matrix(quat q, vec3 center) {
 
 CINLINE quat quat_from_axis_angle(vec3 axis, f32 angle, b8 normalize) {
     const f32 half_angle = 0.5f * angle;
-    f32 s = csin(half_angle);
-    f32 c = ccos(half_angle);
+    f32 s = ksin(half_angle);
+    f32 c = kcos(half_angle);
 
     quat q = (quat){s * axis.x, s * axis.y, s * axis.z, c};
     if (normalize) {
@@ -1265,12 +1265,12 @@ CINLINE quat quat_slerp(quat q_0, quat q_1, f32 percentage) {
     }
 
     // Since dot is in range [0, DOT_THRESHOLD], acos is safe
-    f32 theta_0 = cacos(dot);          // theta_0 = angle between input vectors
+    f32 theta_0 = kacos(dot);          // theta_0 = angle between input vectors
     f32 theta = theta_0 * percentage;  // theta = angle between v0 and result
-    f32 sin_theta = csin(theta);       // compute this value only once
-    f32 sin_theta_0 = csin(theta_0);   // compute this value only once
+    f32 sin_theta = ksin(theta);       // compute this value only once
+    f32 sin_theta_0 = ksin(theta_0);   // compute this value only once
 
-    f32 s0 = ccos(theta) - dot * sin_theta / sin_theta_0;  // == sin(theta_0 - theta) / sin(theta_0)
+    f32 s0 = kcos(theta) - dot * sin_theta / sin_theta_0;  // == sin(theta_0 - theta) / sin(theta_0)
     f32 s1 = sin_theta / sin_theta_0;
 
     return (quat){

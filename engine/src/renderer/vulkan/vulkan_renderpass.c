@@ -28,7 +28,7 @@ void vulkan_renderpass_create(
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
     // Attachments TODO: make this configurable.
-    u32 attachment_description_count = 2;
+    const u32 attachment_description_count = 2;
     VkAttachmentDescription attachment_descriptions[attachment_description_count];
 
     // Color attachment
@@ -135,7 +135,7 @@ void vulkan_renderpass_begin(
     begin_info.renderArea.extent.height = renderpass->h;
 
     VkClearValue clear_values[2];
-    kzero_memory(clear_values, sizeof(VkClearValue) * 2);
+    czero_memory(clear_values, sizeof(VkClearValue) * 2);
     clear_values[0].color.float32[0] = renderpass->r;
     clear_values[0].color.float32[1] = renderpass->g;
     clear_values[0].color.float32[2] = renderpass->b;

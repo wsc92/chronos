@@ -93,7 +93,6 @@ void vulkan_swapchain_present(
 
 void create(vulkan_context* context, u32 width, u32 height, vulkan_swapchain* swapchain) {
     VkExtent2D swapchain_extent = {width, height};
-    swapchain->max_frames_in_flight = 2;
 
     // Choose a swap surface format.
     b8 found = false;
@@ -143,6 +142,8 @@ void create(vulkan_context* context, u32 width, u32 height, vulkan_swapchain* sw
         image_count = context->device.swapchain_support.capabilities.maxImageCount;
     }
 
+    swapchain->max_frames_in_flight = image_count - 1;
+
     // Swapchain create info
     VkSwapchainCreateInfoKHR swapchain_create_info = {VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
     swapchain_create_info.surface = context->surface;
@@ -182,10 +183,10 @@ void create(vulkan_context* context, u32 width, u32 height, vulkan_swapchain* sw
     swapchain->image_count = 0;
     VK_CHECK(vkGetSwapchainImagesKHR(context->device.logical_device, swapchain->handle, &swapchain->image_count, 0));
     if (!swapchain->images) {
-        swapchain->images = (VkImage*)kallocate(sizeof(VkImage) * swapchain->image_count, MEMORY_TAG_RENDERER);
+        swapchain->images = (VkImage*)callocate(sizeof(VkImage) * swapchain->image_count, MEMORY_TAG_RENDERER);
     }
     if (!swapchain->views) {
-        swapchain->views = (VkImageView*)kallocate(sizeof(VkImageView) * swapchain->image_count, MEMORY_TAG_RENDERER);
+        swapchain->views = (VkImageView*)callocate(sizeof(VkImageView) * swapchain->image_count, MEMORY_TAG_RENDERER);
     }
     VK_CHECK(vkGetSwapchainImagesKHR(context->device.logical_device, swapchain->handle, &swapchain->image_count, swapchain->images));
 

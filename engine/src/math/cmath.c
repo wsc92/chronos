@@ -10,27 +10,27 @@ static b8 rand_seeded = false;
  * Note that these are here in order to prevent having to import the
  * entire <math.h> everywhere.
  */
-f32 csin(f32 x) {
+f32 ksin(f32 x) {
     return sinf(x);
 }
 
-f32 ccos(f32 x) {
+f32 kcos(f32 x) {
     return cosf(x);
 }
 
-f32 ctan(f32 x) {
+f32 ktan(f32 x) {
     return tanf(x);
 }
 
-f32 cacos(f32 x) {
+f32 kacos(f32 x) {
     return acosf(x);
 }
 
-f32 csqrt(f32 x) {
+f32 ksqrt(f32 x) {
     return sqrtf(x);
 }
 
-f32 cabs(f32 x) {
+f32 kabs(f32 x) {
     return fabsf(x);
 }
 

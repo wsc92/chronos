@@ -25,7 +25,7 @@ static b8 initialized = false;
 static input_state state = {};
 
 void input_initialize() {
-    kzero_memory(&state, sizeof(input_state));
+    czero_memory(&state, sizeof(input_state));
     initialized = true;
     CINFO("Input subsystem initialized.");
 }
@@ -41,15 +41,35 @@ void input_update(f64 delta_time) {
     }
 
     // Copy current states to previous states.
-    kcopy_memory(&state.keyboard_previous, &state.keyboard_current, sizeof(keyboard_state));
-    kcopy_memory(&state.mouse_previous, &state.mouse_current, sizeof(mouse_state));
+    ccopy_memory(&state.keyboard_previous, &state.keyboard_current, sizeof(keyboard_state));
+    ccopy_memory(&state.mouse_previous, &state.mouse_current, sizeof(mouse_state));
 }
 
 void input_process_key(keys key, b8 pressed) {
+
+    if (key == KEY_LALT) {
+        CINFO("Left alt pressed.")
+    } else if (key == KEY_RALT) {
+        CINFO("Right alt pressed.")
+    }
+
+    if (key == KEY_LSHIFT) {
+        CINFO("Left shift pressed.")
+    } else if (key == KEY_RSHIFT) {
+        CINFO("Right shift pressed.")
+    }
+
+    if (key == KEY_LCONTROL) {
+        CINFO("Left ctrl pressed.")
+    } else if (key == KEY_RCONTROL) {
+        CINFO("Right ctrl pressed.")
+    }
+
     // Only handle this if the state actually changed.
     if (state.keyboard_current.keys[key] != pressed) {
         // Update internal state.
         state.keyboard_current.keys[key] = pressed;
+
 
         // Fire off an event for immediate processing.
         event_context context;

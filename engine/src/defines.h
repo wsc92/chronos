@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdbool.h>
+
 // Unsigned int types.
 typedef unsigned char u8;
 typedef unsigned short u16;
@@ -18,7 +20,7 @@ typedef double f64;
 
 // Boolean types
 typedef int b32;
-typedef char b8;
+typedef _Bool b8;
 
 // Properly define static assertions.
 #if defined(__clang__) || defined(__gcc__)

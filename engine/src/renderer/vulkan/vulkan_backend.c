@@ -488,7 +488,7 @@ void create_command_buffers(renderer_backend* backend) {
     if (!context.graphics_command_buffers) {
         context.graphics_command_buffers = darray_reserve(vulkan_command_buffer, context.swapchain.image_count);
         for (u32 i = 0; i < context.swapchain.image_count; ++i) {
-            kzero_memory(&context.graphics_command_buffers[i], sizeof(vulkan_command_buffer));
+            czero_memory(&context.graphics_command_buffers[i], sizeof(vulkan_command_buffer));
         }
     }
 
@@ -499,7 +499,7 @@ void create_command_buffers(renderer_backend* backend) {
                 context.device.graphics_command_pool,
                 &context.graphics_command_buffers[i]);
         }
-        kzero_memory(&context.graphics_command_buffers[i], sizeof(vulkan_command_buffer));
+        czero_memory(&context.graphics_command_buffers[i], sizeof(vulkan_command_buffer));
         vulkan_command_buffer_allocate(
             &context,
             context.device.graphics_command_pool,
