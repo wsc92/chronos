@@ -21,6 +21,9 @@
 #include <vulkan/vk_platform.h>
 #include <vulkan/vulkan_core.h>
 
+//shaders
+#include "shaders/vulkan_object_shader.h"
+
 
 // static Vulkan context
 static vulkan_context context;
@@ -206,14 +209,25 @@ b8 vulkan_renderer_backend_initialize(struct renderer_backend* backend, const ch
         context.images_in_flight[i] = 0;
     }
 
+    // Create builtin shaders
+    if (!vulkan_object_shader_create(&context, &context.object_shader)) {
+        CERROR("Error loading builtin basic_lighting shader.");
+        return false;
+    }
+
     CINFO("Vulkan renderer initialized successfully.");
     return true;
 }
 
 void vulkan_renderer_backend_shutdown(struct renderer_backend* backend) {
     vkDeviceWaitIdle(context.device.logical_device);
+
     //Destroy in the opposite order of creation.
     
+    //Destroy Object Shader
+    vulkan_object_shader_destroy(&context, &context.object_shader);
+
+
     // Sync objects
     for (u8 i = 0; i < context.swapchain.max_frames_in_flight; ++i) {
         if (context.image_available_semaphores[i]) {
