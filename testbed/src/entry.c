@@ -18,7 +18,9 @@ b8 create_game(game* out_game) {
     out_game->on_resize = game_on_resize;
 
     // create the game state.
-    out_game->state = kallocate(sizeof(game_state), MEMORY_TAG_GAME);
+    out_game->state = callocate(sizeof(game_state), MEMORY_TAG_GAME);
 
-    return TRUE;
+    out_game->application_state = 0;
+
+    return true;
 }
