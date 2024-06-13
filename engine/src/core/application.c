@@ -265,7 +265,7 @@ b8 application_on_resized(u16 code, void* sender, void* listener_inst, event_con
             app_state->width = width;
             app_state->height = height;
 
-            CDEBUG("Window resize: %in, %i", width, height);
+            CDEBUG("Window resize: %i, %i", width, height);
 
             // Handle Minimization
             if (width == 0 || height == 0) {
