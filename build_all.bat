@@ -22,6 +22,10 @@ REM testbed
 make -f "Makefile.testbed.windows.mak" all
 if %ERRORLEVEL% NEQ 0 (echo Error:%ERRORLEVEL% && exit)
 
+REM tests
+make -f "Makefile.tests.windows.mak" all
+if %ERRORLEVEL% NEQ 0 (echo Error:%ERRORLEVEL% && exit)
+
 ECHO "All assemblies built successfully."
 
 PAUSE
