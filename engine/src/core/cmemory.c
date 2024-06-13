@@ -55,8 +55,8 @@ void shutdown_memory(void* state) {
 }
 
 void* callocate(u64 size, memory_tag tag) {
-    if (tag == MEMORY_TAG_UNKOWN) {
-        CWARN("callocate called using MEMORTY_TAG_UKNOWN. Re-class this allocation.");
+    if (tag == MEMORY_TAG_UNKNOWN) {
+        CWARN("callocate called using MEMORTY_TAG_UNKNOWN. Re-class this allocation.");
     }
 
    if (state_ptr) {
@@ -72,7 +72,7 @@ void* callocate(u64 size, memory_tag tag) {
 }
 
 void cfree(void* block, u64 size, memory_tag tag) {
-    if (tag == MEMORY_TAG_UNKOWN) {
+    if (tag == MEMORY_TAG_UNKNOWN) {
         CWARN("kfree called using MEMORY_TAG_UKNOWN. Re-class this allocation");
     }
 
