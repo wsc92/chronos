@@ -24,6 +24,8 @@
 #include <vulkan/vk_platform.h>
 #include <vulkan/vulkan_core.h>
 
+#include <stdint.h>
+
 //shaders
 #include "shaders/vulkan_object_shader.h"
 
