@@ -6,7 +6,6 @@
 
 #include "../../../engine/src/memory/linear_allocator.h"
 
-
 u8 linear_allocator_should_create_and_destroy(void) {
     linear_allocator alloc;
     linear_allocator_create(sizeof(u64), 0, &alloc);

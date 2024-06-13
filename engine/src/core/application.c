@@ -69,9 +69,10 @@ b8 application_create(game* game_inst) {
         return false;
     }
 
+    // Input
     input_initialize();
 
-    // check event System
+    // Event System
     if (!event_initialize()) {
         CERROR("Event system failed initialization. Application cannot continue.");
         return false;
@@ -197,13 +198,19 @@ b8 application_run() {
     event_unregister(EVENT_CODE_KEY_PRESSED, 0, application_on_key);
     event_unregister(EVENT_CODE_KEY_RELEASED, 0, application_on_key);
 
+    // Events
     event_shutdown();
+
+    // Input
     input_shutdown();
 
+    // Renderer
     renderer_shutdown();
 
+    // Platform
     platform_shutdown(&app_state->platform);
 
+    // Memory
     shutdown_memory(app_state->memory_system_state);
 
     return true;

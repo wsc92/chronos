@@ -104,7 +104,10 @@ STATIC_ASSERT(sizeof(f64) == 8, "Expected f64 to be 8 bytes.");
                                                                       : value;
 
 // Inlining
-#ifdef _MSC_VER
+#if defined(__clang__) || defined(__gcc__)
+#define CINLINE __attribute__((always_inline)) inline
+#define CNOINLINE __attribute__((noinline))
+#elif defined(_MSC_VER)
 #define CINLINE __forceinline
 #define CNOINLINE __declspec(noinline)
 #else

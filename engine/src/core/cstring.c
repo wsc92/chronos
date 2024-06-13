@@ -23,7 +23,7 @@ b8 strings_equal(const char* str0, const char* str1) {
 
 i32 string_format(char* dest, const char* format, ...) {
     if (dest) {
-        va_list arg_ptr;
+        __builtin_va_list arg_ptr;
         va_start(arg_ptr, format);
         i32 written = string_format_v(dest, format, arg_ptr);
         va_end(arg_ptr);
