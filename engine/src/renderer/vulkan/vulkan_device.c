@@ -282,13 +282,13 @@ b8 select_physical_device(vulkan_context* context) {
         VkPhysicalDeviceMemoryProperties memory;
         vkGetPhysicalDeviceMemoryProperties(physical_devices[i], &memory);
 
-        // TODO: These should probably be driven by engine
+        // FIX: These should probably be driven by engine
         // configuration.
         vulkan_physical_device_requirements requirements = {};
         requirements.graphics = true;
         requirements.present = true;
         requirements.transfer = true;
-        // NOTE: Enablethis if compute will be required.
+        // NOTE: Enable this if compute will be required.
         // requirements.compute = true;
         requirements.sampler_anisotropy = true;
         requirements.discrete_gpu =  true;

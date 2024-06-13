@@ -65,7 +65,7 @@ void* callocate(u64 size, memory_tag tag) {
         state_ptr->alloc_count++;
     }
 
-    // TODO: Memory Alignment
+    // FIX: Memory Alignment
     void* block = platform_allocate(size, false);
     platform_zero_memory(block, size);
     return block;
@@ -76,10 +76,15 @@ void cfree(void* block, u64 size, memory_tag tag) {
         CWARN("kfree called using MEMORY_TAG_UKNOWN. Re-class this allocation");
     }
 
+    // HACK:
+    // WARN: the bug in tests seems to be here probably a pointer issue..
+    // We get a segmentation fault in the tests (Address Out of Bounds), but works with 
+    // the main testbed... ugly workaround for now ill look into it.
+    // state_ptr is pointer to a struct that holds a substruct within the struct...
     state_ptr->stats.total_allocated -= size;
     state_ptr->stats.tagged_allocations[tag] -= size;
     
-    // TODO: Memory Alignment
+    // FIX: Memory Alignment
     platform_free(block, false);
 }
 
