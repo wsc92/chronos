@@ -23,7 +23,7 @@ void test_manager_register_test(u8 (*PFN_test)(), char* desc) {
     darray_push(tests, e);
 }
 
-void test_manager_run_tests() {
+void test_manager_run_tests(void) {
     u32 passed = 0;
     u32 failed = 0;
     u32 skipped = 0;
