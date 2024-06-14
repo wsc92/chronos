@@ -93,6 +93,7 @@ void vulkan_swapchain_present(
 
 void create(vulkan_context* context, u32 width, u32 height, vulkan_swapchain* swapchain) {
     VkExtent2D swapchain_extent = {width, height};
+    //swapchain->max_frames_in_flight = 2;
 
     // Choose a swap surface format.
     b8 found = false;

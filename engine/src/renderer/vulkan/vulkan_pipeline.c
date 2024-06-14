@@ -6,7 +6,6 @@
 
 #include "../../math/math_types.h"
 
-#include <vulkan/vulkan_core.h>
 
 
 b8 vulkan_graphics_pipeline_create(
@@ -97,7 +96,7 @@ b8 vulkan_graphics_pipeline_create(
     // Vertex input
     VkVertexInputBindingDescription binding_description;
     binding_description.binding = 0; // Binding index
-    binding_description.stride =sizeof(vertex_3d);
+    binding_description.stride = sizeof(vertex_3d);
     binding_description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX; // Move to next data entry for each vertex.
 
     // Attributes
@@ -116,7 +115,6 @@ b8 vulkan_graphics_pipeline_create(
     VkPipelineLayoutCreateInfo pipeline_layout_create_info = {VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
 
     // Descriptor set layouts
-
     pipeline_layout_create_info.setLayoutCount = descriptor_set_layout_count;
     pipeline_layout_create_info.pSetLayouts = descriptor_set_layouts;
 

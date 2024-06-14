@@ -93,7 +93,7 @@ typedef struct vulkan_swapchain {
     u32 image_count;
     VkImage* images;
     VkImageView* views;
-    
+
     vulkan_image depth_attachment;
 
     // framebuffers used for on-screen rendering.

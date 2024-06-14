@@ -71,6 +71,7 @@ b8 vulkan_device_create(vulkan_context* context) {
         // if (indices[i] == context->device.graphics_queue_index) {
         //     queue_create_infos[i].queueCount = 2;
         // }
+
         queue_create_infos[i].flags = 0;
         queue_create_infos[i].pNext = 0;
         f32 queue_priority = 1.0f;
@@ -207,7 +208,7 @@ void vulkan_device_destroy(vulkan_context* context) {
 
     context->device.graphics_queue_index = -1;
     context->device.present_queue_index = -1;
-    context->device.transfer_queue_index = -1;    
+    context->device.transfer_queue_index = -1;
 }
 
 void vulkan_device_query_swapchain_support(

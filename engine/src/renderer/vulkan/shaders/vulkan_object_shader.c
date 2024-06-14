@@ -87,8 +87,6 @@ b8 vulkan_object_shader_create(vulkan_context* context, vulkan_object_shader* ou
         return false;
     }
 
-
-
     return true;
 }
 
