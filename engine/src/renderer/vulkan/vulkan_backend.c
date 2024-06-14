@@ -495,7 +495,6 @@ b8 vulkan_renderer_backend_end_frame(struct renderer_backend* backend, f32 delta
     // Reset the fence for use on the next frame.
     vulkan_fence_reset(&context, &context.in_flight_fences[context.current_frame]);
 
-    //Submit the queue and wait for the operation to complete.
     // Begin the queue submission
     VkSubmitInfo submit_info = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
 

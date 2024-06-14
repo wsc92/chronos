@@ -134,6 +134,7 @@ typedef struct vulkan_pipeline {
 } vulkan_pipeline;
 
 #define OBJECT_SHADER_STAGE_COUNT 2
+
 typedef struct vulkan_object_shader {
     // vertex, fragment
     vulkan_shader_stage stages[OBJECT_SHADER_STAGE_COUNT];
@@ -143,6 +144,7 @@ typedef struct vulkan_object_shader {
 
     // One descriptor set per frame - max 3 for triple-buffering.
     VkDescriptorSet global_descriptor_sets[3];
+    b8 descriptor_updated[3];
 
     // Global uniform object.
     global_uniform_object global_ubo;
