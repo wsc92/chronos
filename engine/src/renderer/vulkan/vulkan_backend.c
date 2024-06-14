@@ -262,7 +262,6 @@ b8 vulkan_renderer_backend_initialize(struct renderer_backend* backend, const ch
 
     upload_data_range(&context, context.device.graphics_command_pool, 0, context.device.graphics_queue, &context.object_vertex_buffer, 0, sizeof(vertex_3d) * vert_count, verts);
     upload_data_range(&context, context.device.graphics_command_pool, 0, context.device.graphics_queue, &context.object_index_buffer, 0, sizeof(u32) * index_count, indices);
-
     // HACK: end test code.
 
     CINFO("Vulkan renderer initialized successfully.");

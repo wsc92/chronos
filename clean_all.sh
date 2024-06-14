@@ -22,4 +22,6 @@ if [ $ERRORLEVEL -ne 0 ]; then
 	echo "Error:"$ERRORLEVEL && exit
 fi
 
+rm -rf bin/assets/
+
 echo "All assemblies cleaned successfully."
