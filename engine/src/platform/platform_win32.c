@@ -23,6 +23,8 @@ typedef struct platform_state {
     VkSurfaceKHR surface;
 } platform_state;
 
+static platform_state *state_ptr;
+
 // Clock
 static f64 clock_frequency;
 static LARGE_INTEGER start_time;
@@ -48,8 +50,10 @@ b8 platform_system_startup(
     if (state == 0) {
         return true;
     }
+
     state_ptr = state;
     state_ptr->h_instance = GetModuleHandleA(0);
+
     // Setup and register window class.
     HICON icon = LoadIcon(state_ptr->h_instance, IDI_APPLICATION);
     WNDCLASSA wc;
@@ -96,7 +100,7 @@ b8 platform_system_startup(
         0, 0, state_ptr->h_instance, 0);
     if (handle == 0) {
         MessageBoxA(NULL, "Window creation failed!", "Error!", MB_ICONEXCLAMATION | MB_OK);
-        KFATAL("Window creation failed!");
+        CFATAL("Window creation failed!");
         return false;
     } else {
         state_ptr->hwnd = handle;
