@@ -39,7 +39,7 @@ typedef struct memory_system_state {
 
 static memory_system_state* state_ptr;
 
-void initialize_memory(u64* memory_requirement, void* state) {
+void memory_system_initialize(u64* memory_requirement, void* state) {
     *memory_requirement = sizeof(memory_system_state);
     if (state == 0) {
         return;
@@ -50,7 +50,7 @@ void initialize_memory(u64* memory_requirement, void* state) {
     platform_zero_memory(&state_ptr->stats, sizeof(state_ptr->stats));
 }
 
-void shutdown_memory(void* state) {
+void memory_system_shutdown(void* state) {
     state_ptr = 0;
 }
 
@@ -76,14 +76,11 @@ void cfree(void* block, u64 size, memory_tag tag) {
         CWARN("kfree called using MEMORY_TAG_UKNOWN. Re-class this allocation");
     }
 
-    // HACK:
-    // WARN: the bug in tests seems to be here probably a pointer issue..
-    // We get a segmentation fault in the tests (Address Out of Bounds), but works with 
-    // the main testbed... ugly workaround for now ill look into it.
-    // state_ptr is pointer to a struct that holds a substruct within the struct...
-    state_ptr->stats.total_allocated -= size;
-    state_ptr->stats.tagged_allocations[tag] -= size;
-    
+    if (state_ptr) {
+        state_ptr->stats.total_allocated -= size;
+        state_ptr->stats.tagged_allocations[tag] -= size;
+    }
+
     // FIX: Memory Alignment
     platform_free(block, false);
 }

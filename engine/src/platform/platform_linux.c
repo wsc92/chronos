@@ -187,6 +187,7 @@ void platform_system_shutdown(void* plat_state) {
         xcb_destroy_window(state_ptr->connection, state_ptr->window);
     }
 }
+
 b8 platform_pump_messages() {
     if (state_ptr) {
         xcb_generic_event_t* event;

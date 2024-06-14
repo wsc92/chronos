@@ -22,6 +22,8 @@ typedef struct input_state {
 
 // Internal input state pointer
 static input_state* state_ptr;
+
+
 void input_system_initialize(u64* memory_requirement, void* state) {
     *memory_requirement = sizeof(input_state);
     if (state == 0) {
@@ -71,6 +73,33 @@ void input_process_key(keys key, b8 pressed) {
         event_context context;
         context.data.u16[0] = key;
         event_fire(pressed ? EVENT_CODE_KEY_PRESSED : EVENT_CODE_KEY_RELEASED, 0, context);
+    }
+}
+
+void input_process_button(buttons button, b8 pressed) {
+    // If the state changed, fire an event.
+    if (state_ptr->mouse_current.buttons[button] != pressed) {
+        state_ptr->mouse_current.buttons[button] = pressed;
+
+        // Fire the event.
+        event_context context;
+        context.data.u16[0] = button;
+        event_fire(pressed ? EVENT_CODE_BUTTON_PRESSED : EVENT_CODE_BUTTON_RELEASED, 0, context);
+    }
+}
+
+void input_process_mouse_move(i16 x, i16 y) {
+    // Only process if actually different
+    if (state_ptr->mouse_current.x != x || state_ptr->mouse_current.y != y) {
+        // NOTE: Enable this if debugging.
+        // KDEBUG("Mouse pos: %i, %i!", x, y);
+
+        // Update internal state_ptr->
+        state_ptr->mouse_current.x = x;
+        state_ptr->mouse_current.y = y;
+
+        // Fire the event.
+        event_context context;
     }
 }
 
