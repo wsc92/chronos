@@ -22,6 +22,7 @@ b8 vulkan_graphics_pipeline_create(
         VkRect2D scissor,
         b8 is_wireframe,
         vulkan_pipeline* out_pipeline) {
+
     // Viewport state
     VkPipelineViewportStateCreateInfo viewport_state = {VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
     viewport_state.viewportCount = 1;
@@ -35,7 +36,7 @@ b8 vulkan_graphics_pipeline_create(
     rasterizer_create_info.rasterizerDiscardEnable = VK_FALSE;
     rasterizer_create_info.polygonMode = is_wireframe ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
     rasterizer_create_info.lineWidth = 1.0f;
-    rasterizer_create_info.cullMode = VK_CULL_MODE_NONE; // was VK_CULL_MODE_BACK_BIT
+    rasterizer_create_info.cullMode = VK_CULL_MODE_BACK_BIT; // was VK_CULL_MODE_NONE
     rasterizer_create_info.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizer_create_info.depthBiasEnable = VK_FALSE;
     rasterizer_create_info.depthBiasConstantFactor = 0.0f;

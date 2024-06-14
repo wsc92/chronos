@@ -55,6 +55,9 @@ void upload_data_range(vulkan_context* context, VkCommandPool pool, VkFence fenc
     vulkan_buffer_create(context, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, flags, true, &staging);
 
     // Load the data into the staging buffer.
+    vulkan_buffer_load_data(context, &staging, 0, size, 0, data);
+
+    // Perform the copy from staging to the device local buffer.
     vulkan_buffer_copy_to(context, pool, fence, queue, staging.handle, 0, buffer->handle, offset, size);
 
     // Clean up the staging buffer.
@@ -245,10 +248,10 @@ b8 vulkan_renderer_backend_initialize(struct renderer_backend* backend, const ch
     verts[0].position.x = 0.0;
     verts[0].position.y = -0.5;
 
-    verts[1].position.x = 0.0;
+    verts[1].position.x = 0.5;
     verts[1].position.y = 0.5;
 
-    verts[2].position.x = 0.0;
+    verts[2].position.x = 0;
     verts[2].position.y = 0.5;
 
     verts[3].position.x = 0.5;
