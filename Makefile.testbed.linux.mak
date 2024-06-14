@@ -1,18 +1,18 @@
+
 BUILD_DIR := bin
 OBJ_DIR := obj
 
 ASSEMBLY := testbed
 EXTENSION := 
-COMPILER_FLAGS := -g -MD -fdeclspec -fPIC
-COMPILER_FLAGS := -g -MD -Werror=vla -fdeclspec -fPIC
-INCLUDE_FLAGS := -Iengine/src -Itestbed/src
-LINKER_FLAGS := -L./$(BUILD_DIR)/ -lengine -Wl,-rpath,.
+COMPILER_FLAGS := -g -MD -Werror=vla -fdeclspec -fPIC -v
+INCLUDE_FLAGS := -Iengine/src -Itestbed/src 
+LINKER_FLAGS := -L./$(BUILD_DIR) -lengine -Wl,-rpath,.
 DEFINES := -D_DEBUG -DCIMPORT
-# Make does not offer a recursive wildcard function, so here's one:
-#rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
-SRC_FILES := $(shell find $(ASSEMBLY) -name *.c)		# .c files
-DIRECTORIES := $(shell find $(ASSEMBLY) -type d)		# directories with .h files
-OBJ_FILES := $(SRC_FILES:%=$(OBJ_DIR)/%.o)		# compiled .o objects
+
+SRC_FILES := $(shell find $(ASSEMBLY) -name *.c)
+DIRECTORIES := $(shell find $(ASSEMBLY) -type d)
+OBJ_FILES := $(SRC_FILES:%=$(OBJ_DIR)/%.o)
+
 all: scaffold compile link
 
 .PHONY: scaffold
@@ -30,13 +30,14 @@ link: scaffold $(OBJ_FILES) # link
 compile: #compile .c files
 	@echo Compiling...
 
--include $(OBJ_FILES:.o=.d)
 .PHONY: clean
 clean: # clean build directory
-	rm -rf $(BUILD_DIR)\$(ASSEMBLY)
-	rm -rf $(OBJ_DIR)\$(ASSEMBLY)
+	rm -rf $(BUILD_DIR)/$(ASSEMBLY)
+	rm -rf $(OBJ_DIR)/$(ASSEMBLY)
+
 $(OBJ_DIR)/%.c.o: %.c # compile .c to .o object
 	@echo   $<...
 	@clang $< $(COMPILER_FLAGS) -c -o $@ $(DEFINES) $(INCLUDE_FLAGS)
 
 -include $(OBJ_FILES:.o=.d)
+
