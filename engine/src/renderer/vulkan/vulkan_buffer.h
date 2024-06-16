@@ -1,7 +1,6 @@
 #pragma once
 
 #include "vulkan_types.inl"
-#include <vulkan/vulkan_core.h>
 
 b8 vulkan_buffer_create(
         vulkan_context* context,

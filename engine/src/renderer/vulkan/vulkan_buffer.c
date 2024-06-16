@@ -2,12 +2,10 @@
 
 #include "vulkan_device.h"
 #include "vulkan_command_buffer.h"
-#include "vulkan_types.inl"
 #include "vulkan_utils.h"
 
 #include "../../core/logger.h"
 #include "../../core/cmemory.h"
-#include <vulkan/vulkan_core.h>
 
 b8 vulkan_buffer_create(
         vulkan_context* context,
@@ -16,7 +14,6 @@ b8 vulkan_buffer_create(
         u32 memory_property_flags,
         b8 bind_on_create,
         vulkan_buffer* out_buffer) {
-
     // Clear out memory
     czero_memory(out_buffer, sizeof(vulkan_buffer));
     out_buffer->total_size = size;
@@ -83,7 +80,6 @@ b8 vulkan_buffer_resize(
         vulkan_buffer* buffer,
         VkQueue queue,
         VkCommandPool pool) {
-
     // Create new buffer
     VkBufferCreateInfo buffer_info = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
     buffer_info.size = new_size;
@@ -168,10 +164,7 @@ void vulkan_buffer_copy_to(
         VkBuffer dest,
         u64 dest_offset,
         u64 size) {
-
-    // Wait
     vkQueueWaitIdle(queue);
-
     // Create a one-time-use command buffer.
     vulkan_command_buffer temp_command_buffer;
     vulkan_command_buffer_allocate_and_begin_single_use(context, pool, &temp_command_buffer);
