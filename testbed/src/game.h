@@ -3,9 +3,16 @@
 #include "../../engine/src/defines.h"
 #include "../../engine/src/game_types.h"
 
+#include "../../engine/src/math/math_types.h"
+#include "../../engine/src/math/cmath.h"
+
 
 typedef struct game_state {
     f32 delta_time;
+    mat4 view;
+    vec3 camera_position;
+    vec3 camera_euler;
+    b8 camera_view_dirty;
 } game_state;
 
 b8 game_initialize(game* game_inst);
