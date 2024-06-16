@@ -3,21 +3,24 @@
 #include "../../core/cmemory.h"
 
 void vulkan_command_buffer_allocate(
-        vulkan_context* context,
-        VkCommandPool pool,
-        b8 is_primary,
-        vulkan_command_buffer* out_command_buffer) {
+    vulkan_context* context,
+    VkCommandPool pool,
+    b8 is_primary,
+    vulkan_command_buffer* out_command_buffer) {
 
-    czero_memory(out_command_buffer, sizeof(out_command_buffer));
+    czero_memory(out_command_buffer, sizeof(vulkan_command_buffer));
 
     VkCommandBufferAllocateInfo allocate_info = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
     allocate_info.commandPool = pool;
     allocate_info.level = is_primary ? VK_COMMAND_BUFFER_LEVEL_PRIMARY : VK_COMMAND_BUFFER_LEVEL_SECONDARY;
     allocate_info.commandBufferCount = 1;
-    allocate_info.pNext = 0;
+    //allocate_info.pNext = 0;
 
     out_command_buffer->state = COMMAND_BUFFER_STATE_NOT_ALLOCATED;
-    VK_CHECK(vkAllocateCommandBuffers(context->device.logical_device, &allocate_info, &out_command_buffer->handle));
+    VK_CHECK(vkAllocateCommandBuffers(
+        context->device.logical_device,
+        &allocate_info,
+        &out_command_buffer->handle));
     out_command_buffer->state = COMMAND_BUFFER_STATE_READY;
 }
 
@@ -36,10 +39,10 @@ void vulkan_command_buffer_free(
 }
 
 void vulkan_command_buffer_begin(
-        vulkan_command_buffer* command_buffer,
-        b8 is_single_use,
-        b8 is_renderpass_continue,
-        b8 is_simultaneous_use) {
+    vulkan_command_buffer* command_buffer,
+    b8 is_single_use,
+    b8 is_renderpass_continue,
+    b8 is_simultaneous_use) {
 
     VkCommandBufferBeginInfo begin_info = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     begin_info.flags = 0;

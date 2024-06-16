@@ -815,7 +815,6 @@ void vulkan_renderer_create_texture(const char* name, b8 auto_release, i32 width
     // Copy the data from the buffer.
     vulkan_image_copy_from_buffer(&context, &data->image, staging.handle, &temp_buffer);
 
-    vulkan_buffer_destroy(&context, &staging);
 
     // Transition from optimal for data reciept to shader-read-only optimal layout.
     vulkan_image_transition_layout(
@@ -827,6 +826,8 @@ void vulkan_renderer_create_texture(const char* name, b8 auto_release, i32 width
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     vulkan_command_buffer_end_single_use(&context, pool, &temp_buffer, queue);
+
+    vulkan_buffer_destroy(&context, &staging);
 
     // Create a sampler for the texture
     VkSamplerCreateInfo sampler_info = {VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};

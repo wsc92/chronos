@@ -8,13 +8,12 @@
 #include "../../core/cmemory.h"
 
 b8 vulkan_buffer_create(
-        vulkan_context* context,
-        u64 size,
-        VkBufferUsageFlags usage,
-        u32 memory_property_flags,
-        b8 bind_on_create,
-        vulkan_buffer* out_buffer) {
-    // Clear out memory
+    vulkan_context* context,
+    u64 size,
+    VkBufferUsageFlagBits usage,
+    u32 memory_property_flags,
+    b8 bind_on_create,
+    vulkan_buffer* out_buffer) {
     czero_memory(out_buffer, sizeof(vulkan_buffer));
     out_buffer->total_size = size;
     out_buffer->usage = usage;
@@ -23,13 +22,13 @@ b8 vulkan_buffer_create(
     VkBufferCreateInfo buffer_info = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
     buffer_info.size = size;
     buffer_info.usage = usage;
-    buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE; // NOTE: Only used in one queue.
+    buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;  // NOTE: Only used in one queue.
 
     VK_CHECK(vkCreateBuffer(context->device.logical_device, &buffer_info, context->allocator, &out_buffer->handle));
 
     // Gather memory requirements.
     VkMemoryRequirements requirements;
-    vkGetBufferMemoryRequirements(context->device.logical_device,  out_buffer->handle, &requirements);
+    vkGetBufferMemoryRequirements(context->device.logical_device, out_buffer->handle, &requirements);
     out_buffer->memory_index = context->find_memory_index(requirements.memoryTypeBits, out_buffer->memory_property_flags);
     if (out_buffer->memory_index == -1) {
         CERROR("Unable to create vulkan buffer because the required memory type index was not found.");
@@ -43,10 +42,10 @@ b8 vulkan_buffer_create(
 
     // Allocate the memory.
     VkResult result = vkAllocateMemory(
-            context->device.logical_device,
-            &allocate_info,
-            context->allocator,
-            &out_buffer->memory);
+        context->device.logical_device,
+        &allocate_info,
+        context->allocator,
+        &out_buffer->memory);
 
     if (result != VK_SUCCESS) {
         CERROR("Unable to create vulkan buffer because the required memory allocation failed. Error: %i", result);
@@ -75,23 +74,23 @@ void vulkan_buffer_destroy(vulkan_context* context, vulkan_buffer* buffer) {
 }
 
 b8 vulkan_buffer_resize(
-        vulkan_context* context,
-        u64 new_size,
-        vulkan_buffer* buffer,
-        VkQueue queue,
-        VkCommandPool pool) {
-    // Create new buffer
+    vulkan_context* context,
+    u64 new_size,
+    vulkan_buffer* buffer,
+    VkQueue queue,
+    VkCommandPool pool) {
+    // Create new buffer.
     VkBufferCreateInfo buffer_info = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
     buffer_info.size = new_size;
     buffer_info.usage = buffer->usage;
-    buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE; // NOTE: Only used in one queue.
-    
+    buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;  // NOTE: Only used in one queue.
+
     VkBuffer new_buffer;
     VK_CHECK(vkCreateBuffer(context->device.logical_device, &buffer_info, context->allocator, &new_buffer));
 
-    // Gather memory requirements
+    // Gather memory requirements.
     VkMemoryRequirements requirements;
-    vkGetBufferMemoryRequirements(context->device.logical_device,  new_buffer, &requirements);
+    vkGetBufferMemoryRequirements(context->device.logical_device, new_buffer, &requirements);
 
     // Allocate memory info
     VkMemoryAllocateInfo allocate_info = {VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
@@ -109,7 +108,7 @@ b8 vulkan_buffer_resize(
     // Bind the new buffer's memory
     VK_CHECK(vkBindBufferMemory(context->device.logical_device, new_buffer, new_memory, 0));
 
-    // Copy over the data.
+    // Copy over the data
     vulkan_buffer_copy_to(context, pool, 0, queue, buffer->handle, 0, new_buffer, 0, buffer->total_size);
 
     // Make sure anything potentially using these is finished.
@@ -164,7 +163,7 @@ void vulkan_buffer_copy_to(
         VkBuffer dest,
         u64 dest_offset,
         u64 size) {
-    vkQueueWaitIdle(queue);
+        vkQueueWaitIdle(queue);
     // Create a one-time-use command buffer.
     vulkan_command_buffer temp_command_buffer;
     vulkan_command_buffer_allocate_and_begin_single_use(context, pool, &temp_command_buffer);
@@ -177,6 +176,6 @@ void vulkan_buffer_copy_to(
 
     vkCmdCopyBuffer(temp_command_buffer.handle, source, dest, 1, &copy_region);
 
-    // Submit the buffer for execution and wait for it to complete
+    // Submit the buffer for execution and wait for it to complete.
     vulkan_command_buffer_end_single_use(context, pool, &temp_command_buffer, queue);
 }

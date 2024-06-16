@@ -152,11 +152,12 @@ b8 vulkan_object_shader_create(vulkan_context* context, vulkan_object_shader* ou
     }
 
     // Create uniform buffer.
+    u32 device_local_bits = context->device.supports_device_local_host_visible ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : 0;
     if (!vulkan_buffer_create(
             context,
             sizeof(global_uniform_object) * 3,
             VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | device_local_bits,
             true,
             &out_shader->global_uniform_buffer)) {
         CERROR("Vulkan buffer creation failed for object shader.");
@@ -180,7 +181,7 @@ b8 vulkan_object_shader_create(vulkan_context* context, vulkan_object_shader* ou
             context,
             sizeof(object_uniform_object),  //* MAX_MATERIAL_INSTANCE_COUNT,
             VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
             true,
             &out_shader->object_uniform_buffer)) {
         CERROR("Material instance buffer creation failed for shader.");
