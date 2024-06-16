@@ -167,13 +167,6 @@ b8 application_run() {
                 app_state->is_running = false;
                 break;
             }
-
-            // Call the game's render routine.
-            if (!app_state->game_inst->render(app_state->game_inst, (f32)delta)) {
-                CFATAL("Game render failed, Shutting down...");
-                app_state->is_running = false;
-                break;
-            }
             
             // TODO: refactor packet creation
             render_packet packet;

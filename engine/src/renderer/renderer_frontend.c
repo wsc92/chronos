@@ -67,7 +67,7 @@ b8 renderer_draw_frame(render_packet* packet) {
         mat4 projection = mat4_perspective(deg_to_rad(45.0f), 1280 / 720.0f, 0.1f, 10000.0f);
         static f32 z = -1.0f;
         z -= 0.005f;
-        mat4 view = mat4_translation((vec3){0, 0, z});
+        mat4 view = mat4_translation((vec3){0, 0, -30.0f});
 
         state_ptr->backend.update_global_state(projection, view, vec3_zero(), vec4_one(), 0);
 

@@ -186,6 +186,7 @@ b8 vulkan_renderer_backend_initialize(struct renderer_backend* backend, const ch
     }
 
     //Swapchain
+    CDEBUG("Creating Swapchain...");
     vulkan_swapchain_create(
             &context,
             context.framebuffer_width,
@@ -196,7 +197,7 @@ b8 vulkan_renderer_backend_initialize(struct renderer_backend* backend, const ch
     &context,
     &context.main_renderpass,
     0, 0, context.framebuffer_width, context.framebuffer_height,
-    0.0f, 0.0f, 0.2f, 1.0f,
+    0.0f, 0.0f, 0.3f, 1.0f,
     1.0f,
     0);
 
@@ -272,18 +273,22 @@ b8 vulkan_renderer_backend_initialize(struct renderer_backend* backend, const ch
 
 void vulkan_renderer_backend_shutdown(struct renderer_backend* backend) {
     vkDeviceWaitIdle(context.device.logical_device);
-
     //Destroy in the opposite order of creation.
+
     // Destroy buffers
+    CDEBUG("Destroying Vulkan Buffer...");
     vulkan_buffer_destroy(&context, &context.object_vertex_buffer);
     vulkan_buffer_destroy(&context, &context.object_index_buffer);
     
     //Destroy Object Shader
+    CDEBUG("Destroying Shader...");
     vulkan_object_shader_destroy(&context, &context.object_shader);
 
 
     // Sync objects
+    CDEBUG("Destroying Sync objects...");
     for (u8 i = 0; i < context.swapchain.max_frames_in_flight; ++i) {
+        vulkan_fence_destroy(&context, &context.in_flight_fences[i]);
         if (context.image_available_semaphores[i]) {
             vkDestroySemaphore(
                 context.device.logical_device,
@@ -298,21 +303,21 @@ void vulkan_renderer_backend_shutdown(struct renderer_backend* backend) {
                 context.allocator);
             context.queue_complete_semaphores[i] = 0;
         }
-        vulkan_fence_destroy(&context, &context.in_flight_fences[i]);
     }
-    darray_destroy(context.image_available_semaphores);
-    context.image_available_semaphores = 0;
-
-    darray_destroy(context.queue_complete_semaphores);
-    context.queue_complete_semaphores = 0;
-
     darray_destroy(context.in_flight_fences);
     context.in_flight_fences = 0;
 
     darray_destroy(context.images_in_flight);
     context.images_in_flight = 0;
 
+    darray_destroy(context.image_available_semaphores);
+    context.image_available_semaphores = 0;
+
+    darray_destroy(context.queue_complete_semaphores);
+    context.queue_complete_semaphores = 0;
+
     // Command buffers
+    CDEBUG("Destroying Command Buffers...");
     for (u32 i = 0; i < context.swapchain.image_count; ++i) {
         if (context.graphics_command_buffers[i].handle) {
             vulkan_command_buffer_free(
@@ -326,14 +331,17 @@ void vulkan_renderer_backend_shutdown(struct renderer_backend* backend) {
     context.graphics_command_buffers = 0;
 
     // Destroy framebuffers
+    CDEBUG("Destroying Frameuffers...");
     for (u32 i = 0; i < context.swapchain.image_count; ++i) {
         vulkan_framebuffer_destroy(&context, &context.swapchain.framebuffers[i]);
     }
 
     // Renderpass
+    CDEBUG("Destroying Renderpass...");
     vulkan_renderpass_destroy(&context, &context.main_renderpass);
 
     //Swapchain
+    CDEBUG("Destroying Swapchain...");
     vulkan_swapchain_destroy(&context, &context.swapchain);
     
     CDEBUG("Destroying Vulkan device...");
