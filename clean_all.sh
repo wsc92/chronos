@@ -4,6 +4,8 @@ set echo on
 
 echo "Cleaning everything..."
 
+#rm -rf bin/assets/
+
 make -f "Makefile.engine.linux.mak" clean
 ERRORLEVEL=$?
 if [ $ERRORLEVEL -ne 0 ]; then
