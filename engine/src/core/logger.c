@@ -5,7 +5,6 @@
 #include "cmemory.h"
 #include "cstring.h"
 
-
 // TODO: temporary
 #include <stdarg.h>
 
@@ -40,8 +39,6 @@ b8 initialize_logging(u64* memory_requirement, void* state) {
         return false;
     }
 
-
-
     // TODO: Remove this later
     CFATAL("A test message: %f", 3.14f);
     CERROR("A test message: %f", 3.14f);
@@ -53,6 +50,7 @@ b8 initialize_logging(u64* memory_requirement, void* state) {
     // TODO: create log file.
     return true;
 }
+
 void shutdown_logging(void* state) {
     state_ptr = 0;
     // TODO: cleanup logging/write queued entries.
