@@ -1,6 +1,7 @@
 #include "test_manager.h"
 
 #include "memory/linear_allocator_tests.h"
+#include "containers/hashtable_tests.h"
 
 #include "../../engine/src/core/logger.h"
 
@@ -10,7 +11,8 @@ int main() {
 
     // TODO: add test registrations here.
     linear_allocator_register_tests();
-
+    // hashtables
+    hashtable_register_tests();
 
     CDEBUG("Starting tests...");
 

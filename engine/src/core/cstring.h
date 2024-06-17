@@ -10,6 +10,10 @@ CAPI char* string_duplicate(const char* str);
 // case-sensitive string comparison. True if the same, otherwise False.
 CAPI b8 strings_equal(const char* str0, const char* str1);
 
+
+// Case-insensitive string comparison. True if the same, otherwise false.
+CAPI b8 strings_equali(const char* str0, const char* str1);
+
 /**
  * @brief Performs string formatting to dest given format string and parameters.
  * @param dest The destination for the formatted string.

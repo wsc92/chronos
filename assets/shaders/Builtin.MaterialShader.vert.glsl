@@ -8,6 +8,7 @@ layout(set = 0, binding = 0) uniform global_uniform_object {
     mat4 projection;
 	mat4 view;
 } global_ubo;
+
 layout(push_constant) uniform push_constants {
 	
 	// Only guaranteed a total of 128 bytes.
