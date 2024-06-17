@@ -34,6 +34,14 @@ CAPI i32 string_format(char* dest, const char* format, ...);
  */
 CAPI i32 string_format_v(char* dest, const char* format, void* va_list);
 
+/**
+ * @brief Empties the provided string by setting the first character to 0.
+ * 
+ * @param str The string to be emptied.
+ * @return A pointer to str. 
+ */
+CAPI char* string_empty(char* str);
+
 
 CAPI char* string_copy(char* dest, const char* source);
 
