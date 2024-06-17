@@ -235,7 +235,7 @@ b8 vulkan_renderer_backend_initialize(struct renderer_backend* backend, const ch
     }
 
     // Create builtin shaders
-    if (!vulkan_object_shader_create(&context, &context.object_shader)) {
+    if (!vulkan_object_shader_create(&context, backend->default_diffuse, &context.object_shader)) {
         CERROR("Error loading builtin basic_lighting shader.");
         return false;
     }
@@ -815,7 +815,6 @@ void vulkan_renderer_create_texture(const char* name, b8 auto_release, i32 width
     // Copy the data from the buffer.
     vulkan_image_copy_from_buffer(&context, &data->image, staging.handle, &temp_buffer);
 
-
     // Transition from optimal for data reciept to shader-read-only optimal layout.
     vulkan_image_transition_layout(
         &context,
@@ -862,12 +861,13 @@ void vulkan_renderer_destroy_texture(struct texture* texture) {
     vkDeviceWaitIdle(context.device.logical_device);
 
     vulkan_texture_data* data = (vulkan_texture_data*)texture->internal_data;
+    if (data) {
+        vulkan_image_destroy(&context, &data->image);
+        czero_memory(&data->image, sizeof(vulkan_image));
+        vkDestroySampler(context.device.logical_device, data->sampler, context.allocator);
+        data->sampler = 0;
 
-    vulkan_image_destroy(&context, &data->image);
-    czero_memory(&data->image, sizeof(vulkan_image));
-    vkDestroySampler(context.device.logical_device, data->sampler, context.allocator);
-    data->sampler = 0;
-
-    cfree(texture->internal_data, sizeof(vulkan_texture_data), MEMORY_TAG_TEXTURE);
+        cfree(texture->internal_data, sizeof(vulkan_texture_data), MEMORY_TAG_TEXTURE);
+    }
     czero_memory(texture, sizeof(struct texture));
 }
