@@ -15,6 +15,7 @@
 #include "../systems/texture_system.h"
 #include "../systems/material_system.h"
 #include "../systems/geometry_system.h"
+#include "../systems/resource_system.h"
 
 // TODO: temp
 #include "../math/cmath.h"
@@ -44,6 +45,9 @@ typedef struct application_state {
 
     u64 platform_system_memory_requirement;
     void* platform_system_state;
+
+    u64 resource_system_memory_requirement;
+    void* resource_system_state;
 
     u64 renderer_system_memory_requirement;
     void* renderer_system_state;
@@ -162,6 +166,17 @@ b8 application_create(game* game_inst) {
         return false;
     }
 
+    // Resource system.
+    resource_system_config resource_sys_config;
+    resource_sys_config.asset_base_path = "../assets";
+    resource_sys_config.max_loader_count = 32;
+    resource_system_initialize(&app_state->resource_system_memory_requirement, 0, resource_sys_config);
+    app_state->resource_system_state = linear_allocator_allocate(&app_state->systems_allocator, app_state->resource_system_memory_requirement);
+    if(!resource_system_initialize(&app_state->resource_system_memory_requirement, app_state->resource_system_state, resource_sys_config)) {
+        CFATAL("Failed to initialize resource system. Aborting application.");
+        return false;
+    }
+
     // Renderer system
     renderer_system_initialize(&app_state->renderer_system_memory_requirement, 0, 0);
     app_state->renderer_system_state = linear_allocator_allocate(&app_state->systems_allocator, app_state->renderer_system_memory_requirement);
@@ -275,6 +290,9 @@ b8 application_run() {
 
             packet.geometry_count = 1;
             packet.geometries = &test_render;
+
+            packet.ui_geometry_count = 0;
+            packet.ui_geometries = 0;
             // TODO: end temp
 
             renderer_draw_frame(&packet);
@@ -333,6 +351,9 @@ b8 application_run() {
 
     // Renderer
     renderer_system_shutdown(app_state->renderer_system_state);
+
+    // Resources
+    resource_system_shutdown(app_state->resource_system_state);
 
     // Platform
     platform_system_shutdown(app_state->platform_system_state);

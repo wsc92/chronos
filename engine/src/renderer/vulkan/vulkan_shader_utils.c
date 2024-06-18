@@ -4,7 +4,7 @@
 #include "../../core/logger.h"
 #include "../../core/cmemory.h"
 
-#include "../../platform/filesystem.h"
+#include "../../systems/resource_system.h"
 
 b8 create_shader_module(
     vulkan_context* context,
@@ -13,38 +13,33 @@ b8 create_shader_module(
     VkShaderStageFlagBits shader_stage_flag,
     u32 stage_index,
     vulkan_shader_stage* shader_stages) {
-    // Build file name.
+    
+    // Build file name, which will also be used as the resource name.
     char file_name[512];
-    string_format(file_name, "assets/shaders/%s.%s.spv", name, type_str);
+    string_format(file_name, "shaders/%s.%s.spv", name, type_str);
 
-    czero_memory(&shader_stages[stage_index].create_info, sizeof(VkShaderModuleCreateInfo));
-    shader_stages[stage_index].create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-
-    // Obtain file handle.
-    file_handle handle;
-    if (!filesystem_open(file_name, FILE_MODE_READ, true, &handle)) {
+    // Read the resource.
+    resource binary_resource;
+    if (!resource_system_load(file_name, RESOURCE_TYPE_BINARY, &binary_resource)) {
         CERROR("Unable to read shader module: %s.", file_name);
         return false;
     }
 
-    // Read the entire file as binary.
-    u64 size = 0;
-    u8* file_buffer = 0;
-    if (!filesystem_read_all_bytes(&handle, &file_buffer, &size)) {
-        CERROR("Unable to binary read shader module: %s.", file_name);
-        return false;
-    }
-    shader_stages[stage_index].create_info.codeSize = size;
-    shader_stages[stage_index].create_info.pCode = (u32*)file_buffer;
+    czero_memory(&shader_stages[stage_index].create_info, sizeof(VkShaderModuleCreateInfo));
+    shader_stages[stage_index].create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 
-    // Close the file.
-    filesystem_close(&handle);
+    // Use the resource's size and data directly.
+    shader_stages[stage_index].create_info.codeSize = binary_resource.data_size;
+    shader_stages[stage_index].create_info.pCode = (u32*)binary_resource.data;
 
     VK_CHECK(vkCreateShaderModule(
         context->device.logical_device,
         &shader_stages[stage_index].create_info,
         context->allocator,
         &shader_stages[stage_index].handle));
+
+    // Release the resource.
+    resource_system_unload(&binary_resource);
 
     // Shader stage info
     czero_memory(&shader_stages[stage_index].shader_stage_create_info, sizeof(VkPipelineShaderStageCreateInfo));
