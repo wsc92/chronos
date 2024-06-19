@@ -100,8 +100,8 @@ b8 vulkan_device_create(vulkan_context* context) {
 
     u32 extension_count = portability_required ? 2 : 1;
     const char** extension_names = portability_required
-            ? (const char* [2]) { VK_KHR_SWAPCHAIN_EXTENSION_NAME, "VK_KHR_portability_subset" }
-            : (const char* [1]) { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+                                       ? (const char* [2]){VK_KHR_SWAPCHAIN_EXTENSION_NAME, "VK_KHR_portability_subset"}
+                                       : (const char* [1]){VK_KHR_SWAPCHAIN_EXTENSION_NAME};
     VkPhysicalDeviceFeatures device_features = {};
     device_features.samplerAnisotropy = VK_TRUE;  // Request anistrophy
 
@@ -302,6 +302,8 @@ b8 select_physical_device(vulkan_context* context) {
 
         VkPhysicalDeviceMemoryProperties memory;
         vkGetPhysicalDeviceMemoryProperties(physical_devices[i], &memory);
+
+        CINFO("Evaluating device: '%s', index %u.", properties.deviceName, i);
 
         //Check if device supports local/host visible combo.
         b8 supports_device_local_host_visible = false;

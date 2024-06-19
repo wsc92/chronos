@@ -17,6 +17,7 @@ all: scaffold compile link
 .PHONY: scaffold
 scaffold: # create build directory
 	@echo Scaffolding folder structure...
+	@mkdir -p bin
 	@mkdir -p $(addprefix $(OBJ_DIR)/,$(DIRECTORIES))
 	@echo Done.
 

@@ -154,16 +154,16 @@ void vulkan_buffer_load_data(vulkan_context* context, vulkan_buffer* buffer, u64
 }
 
 void vulkan_buffer_copy_to(
-        vulkan_context* context,
-        VkCommandPool pool,
-        VkFence fence,
-        VkQueue queue,
-        VkBuffer source,
-        u64 source_offset,
-        VkBuffer dest,
-        u64 dest_offset,
-        u64 size) {
-        vkQueueWaitIdle(queue);
+    vulkan_context* context,
+    VkCommandPool pool,
+    VkFence fence,
+    VkQueue queue,
+    VkBuffer source,
+    u64 source_offset,
+    VkBuffer dest,
+    u64 dest_offset,
+    u64 size) {
+    vkQueueWaitIdle(queue);
     // Create a one-time-use command buffer.
     vulkan_command_buffer temp_command_buffer;
     vulkan_command_buffer_allocate_and_begin_single_use(context, pool, &temp_command_buffer);
