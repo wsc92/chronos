@@ -11,6 +11,8 @@
 #include <windows.h>
 #include <windowsx.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
 // For surface creation
 #include <vulkan/vulkan.h>
