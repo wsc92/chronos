@@ -125,7 +125,7 @@ b8 vulkan_renderer_backend_initialize(struct renderer_backend* backend, const ch
     required_validation_layer_names = darray_create(const char*);
     darray_push(required_validation_layer_names, &"VK_LAYER_KHRONOS_validation");
     // NOTE: enable this when needed for debugging.
-    darray_push(required_validation_layer_names, &"VK_LAYER_LUNARG_api_dump");
+    //darray_push(required_validation_layer_names, &"VK_LAYER_LUNARG_api_dump");
     required_validation_layer_count = darray_length(required_validation_layer_names);
 
     // Obtain a list of available validation layers
