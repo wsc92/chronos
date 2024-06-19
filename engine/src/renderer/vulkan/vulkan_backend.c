@@ -1064,6 +1064,7 @@ b8 vulkan_renderer_create_geometry(geometry* geometry, u32 vertex_size, u32 vert
         }
     }
 
+    CTRACE("Renderer: Geometry Created")
     return true;
 }
 
