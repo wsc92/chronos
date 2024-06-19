@@ -160,7 +160,6 @@ b8 vulkan_material_shader_create(vulkan_context* context, vulkan_material_shader
 
     // Create uniform buffer.
     u32 device_local_bits = context->device.supports_device_local_host_visible ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : 0;
-
     u32 global_ubo_size = sizeof(vulkan_material_shader_global_ubo);
     if (global_ubo_size == 0) {
         CERROR("Size of vulkan_material_shader_global_ubo is zero!");

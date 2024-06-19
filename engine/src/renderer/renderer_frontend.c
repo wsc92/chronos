@@ -84,11 +84,11 @@ b8 renderer_draw_frame(render_packet* packet) {
             state_ptr->backend.draw_geometry(packet->geometries[i]);
         }
 
+        // End world renderpass
         if (!state_ptr->backend.end_renderpass(&state_ptr->backend, BUILTIN_RENDERPASS_WORLD)) {
             CERROR("backend.end_renderpass -> BUILTIN_RENDERPASS_WORLD failed. Application shutting down...");
             return false;
         }
-        // End world renderpass
 
         // UI renderpass
         if (!state_ptr->backend.begin_renderpass(&state_ptr->backend, BUILTIN_RENDERPASS_UI)) {
@@ -105,11 +105,11 @@ b8 renderer_draw_frame(render_packet* packet) {
             state_ptr->backend.draw_geometry(packet->ui_geometries[i]);
         }
 
+        // End UI renderpass
         if (!state_ptr->backend.end_renderpass(&state_ptr->backend, BUILTIN_RENDERPASS_UI)) {
             CERROR("backend.end_renderpass -> BUILTIN_RENDERPASS_UI failed. Application shutting down...");
             return false;
         }
-        // End UI renderpass
 
         // End the frame. If this fails, it is likely unrecoverable.
         b8 result = state_ptr->backend.end_frame(&state_ptr->backend, packet->delta_time);

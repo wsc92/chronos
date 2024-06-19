@@ -220,15 +220,18 @@ b8 application_create(game* game_inst) {
     // TODO: temp
 
     // Load up a plane configuration, and load geometry from it.
-    geometry_config g_config = geometry_system_generate_plane_config(10.0f, 5.0f, 5, 5, 5.0f, 2.0f, "test geometry", "test_material");
-    app_state->test_geometry = geometry_system_acquire_from_config(g_config, true);
+    // FIX: 
+    // geometry_config g_config = geometry_system_generate_plane_config(10.0f, 5.0f, 5, 5, 5.0f, 2.0f, "test geometry", "test_material");
+    // NOTE: this function probably works but should test
+    // app_state->test_geometry = geometry_system_acquire_from_config(g_config, true);
 
     // Clean up the allocations for the geometry config.
-    cfree(g_config.vertices, sizeof(vertex_3d) * g_config.vertex_count, MEMORY_TAG_ARRAY);
-    cfree(g_config.indices, sizeof(u32) * g_config.index_count, MEMORY_TAG_ARRAY);
+    //cfree(g_config.vertices, sizeof(vertex_3d) * g_config.vertex_count, MEMORY_TAG_ARRAY);
+    //cfree(g_config.indices, sizeof(u32) * g_config.index_count, MEMORY_TAG_ARRAY);
 
     // Load up default geometry.
-    //app_state->test_geometry = geometry_system_get_default();
+    app_state->test_geometry = geometry_system_get_default();
+
     // Load up some test UI geometry.
     geometry_config ui_config;
     ui_config.vertex_size = sizeof(vertex_2d);

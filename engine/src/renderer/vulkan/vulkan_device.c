@@ -25,7 +25,6 @@ typedef struct vulkan_physical_device_queue_family_info {
 } vulkan_physical_device_queue_family_info;
 
 b8 select_physical_device(vulkan_context* context);
-
 b8 physical_device_meets_requirements(
     VkPhysicalDevice device,
     VkSurfaceKHR surface,
@@ -41,7 +40,7 @@ b8 vulkan_device_create(vulkan_context* context) {
     }
 
     CINFO("Creating logical device...");
-    // NOTE: Do not create additional queues for shared indices
+    // NOTE: Do not create additional queues for shared indices.
     b8 present_shares_graphics_queue = context->device.graphics_queue_index == context->device.present_queue_index;
     b8 transfer_shares_graphics_queue = context->device.graphics_queue_index == context->device.transfer_queue_index;
     u32 index_count = 1;
@@ -71,15 +70,16 @@ b8 vulkan_device_create(vulkan_context* context) {
         // if (indices[i] == context->device.graphics_queue_index) {
         //     queue_create_infos[i].queueCount = 2;
         // }
-
         queue_create_infos[i].flags = 0;
         queue_create_infos[i].pNext = 0;
         f32 queue_priority = 1.0f;
         queue_create_infos[i].pQueuePriorities = &queue_priority;
     }
 
-
     // Request device features.
+    // TODO: should be config driven
+    VkPhysicalDeviceFeatures device_features = {};
+    device_features.samplerAnisotropy = VK_TRUE;  // Request anistrophy
 
     b8 portability_required = false;
     u32 available_extension_count = 0;
@@ -100,11 +100,8 @@ b8 vulkan_device_create(vulkan_context* context) {
 
     u32 extension_count = portability_required ? 2 : 1;
     const char** extension_names = portability_required
-                                       ? (const char* [2]){VK_KHR_SWAPCHAIN_EXTENSION_NAME, "VK_KHR_portability_subset"}
-                                       : (const char* [1]){VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-    VkPhysicalDeviceFeatures device_features = {};
-    device_features.samplerAnisotropy = VK_TRUE;  // Request anistrophy
-
+            ? (const char* [2]) { VK_KHR_SWAPCHAIN_EXTENSION_NAME, "VK_KHR_portability_subset" }
+            : (const char* [1]) { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
     VkDeviceCreateInfo device_create_info = {VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
     device_create_info.queueCreateInfoCount = index_count;
     device_create_info.pQueueCreateInfos = queue_create_infos;
@@ -115,7 +112,6 @@ b8 vulkan_device_create(vulkan_context* context) {
     // Deprecated and ignored, so pass nothing.
     device_create_info.enabledLayerCount = 0;
     device_create_info.ppEnabledLayerNames = 0;
-
 
     // Create the device.
     VK_CHECK(vkCreateDevice(
@@ -146,22 +142,22 @@ b8 vulkan_device_create(vulkan_context* context) {
         &context->device.transfer_queue);
     CINFO("Queues obtained.");
 
-    // Create command pool for graphics queue
+    // Create command pool for graphics queue.
     VkCommandPoolCreateInfo pool_create_info = {VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
     pool_create_info.queueFamilyIndex = context->device.graphics_queue_index;
     pool_create_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     VK_CHECK(vkCreateCommandPool(
-                context->device.logical_device,
-                &pool_create_info,
-                context->allocator,
-                &context->device.graphics_command_pool));
-    CINFO("Graphics command pool created.")
+        context->device.logical_device,
+        &pool_create_info,
+        context->allocator,
+        &context->device.graphics_command_pool));
+    CINFO("Graphics command pool created.");
 
     return true;
 }
 
 void vulkan_device_destroy(vulkan_context* context) {
-   
+
     // Unset queues
     context->device.graphics_queue = 0;
     context->device.present_queue = 0;
@@ -169,10 +165,10 @@ void vulkan_device_destroy(vulkan_context* context) {
 
     CINFO("Destroying command pools...");
     vkDestroyCommandPool(
-            context->device.logical_device,
-            context->device.graphics_command_pool,
-            context->allocator);
-    
+        context->device.logical_device,
+        context->device.graphics_command_pool,
+        context->allocator);
+
     // Destroy logical device
     CINFO("Destroying logical device...");
     if (context->device.logical_device) {
@@ -264,8 +260,8 @@ b8 vulkan_device_detect_depth_format(vulkan_device* device) {
         VK_FORMAT_D32_SFLOAT,
         VK_FORMAT_D32_SFLOAT_S8_UINT,
         VK_FORMAT_D24_UNORM_S8_UINT};
-    u32 flags = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
+    u32 flags = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
     for (u64 i = 0; i < candidate_count; ++i) {
         VkFormatProperties properties;
         vkGetPhysicalDeviceFormatProperties(device->physical_device, candidates[i], &properties);
@@ -289,7 +285,6 @@ b8 select_physical_device(vulkan_context* context) {
         CFATAL("No devices which support Vulkan were found.");
         return false;
     }
-
     const u32 max_device_count = 32;
     VkPhysicalDevice physical_devices[max_device_count];
     VK_CHECK(vkEnumeratePhysicalDevices(context->instance, &physical_device_count, physical_devices));
@@ -303,21 +298,7 @@ b8 select_physical_device(vulkan_context* context) {
         VkPhysicalDeviceMemoryProperties memory;
         vkGetPhysicalDeviceMemoryProperties(physical_devices[i], &memory);
 
-        CINFO("Evaluating device: '%s', index %u.", properties.deviceName, i);
-
-        //Check if device supports local/host visible combo.
-        b8 supports_device_local_host_visible = false;
-        for (u32 i = 0; i < memory.memoryTypeCount; ++i) {
-            // Check each memory type to see if its bit is set to 1.
-            if (
-                ((memory.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0) &&
-                ((memory.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0)) {
-                supports_device_local_host_visible = true;
-                break;
-            }
-        }
-
-        // FIX: These should probably be driven by engine
+        // TODO: These requirements should probably be driven by engine
         // configuration.
         vulkan_physical_device_requirements requirements = {};
         requirements.graphics = true;
@@ -326,19 +307,24 @@ b8 select_physical_device(vulkan_context* context) {
         // NOTE: Enable this if compute will be required.
         // requirements.compute = true;
         requirements.sampler_anisotropy = true;
-        requirements.discrete_gpu =  true;
+    #if KPLATFORM_APPLE
+        requirements.discrete_gpu = false;
+    #else
+        requirements.discrete_gpu = true;
+    #endif
         requirements.device_extension_names = darray_create(const char*);
         darray_push(requirements.device_extension_names, &VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
         vulkan_physical_device_queue_family_info queue_info = {};
         b8 result = physical_device_meets_requirements(
-                physical_devices[i],
-                context->surface,
-                &properties,
-                &features,
-                &requirements,
-                &queue_info,
-                &context->device.swapchain_support);
+            physical_devices[i],
+            context->surface,
+            &properties,
+            &features,
+            &requirements,
+            &queue_info,
+            &context->device.swapchain_support);
+
         if (result) {
             CINFO("Selected device: '%s'.", properties.deviceName);
             // GPU type, etc.
@@ -394,7 +380,6 @@ b8 select_physical_device(vulkan_context* context) {
             context->device.properties = properties;
             context->device.features = features;
             context->device.memory = memory;
-            context->device.supports_device_local_host_visible = supports_device_local_host_visible;
             break;
         }
     }
@@ -408,7 +393,6 @@ b8 select_physical_device(vulkan_context* context) {
     CINFO("Physical device selected.");
     return true;
 }
-
 
 b8 physical_device_meets_requirements(
     VkPhysicalDevice device,
@@ -557,4 +541,4 @@ b8 physical_device_meets_requirements(
     }
 
     return false;
-} 
+}

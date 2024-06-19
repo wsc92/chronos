@@ -4,7 +4,7 @@
 #include <vulkan/vulkan_core.h>
 
 void vulkan_renderpass_create(
-    vulkan_context* context, 
+    vulkan_context* context,
     vulkan_renderpass* out_renderpass,
     vec4 render_area,
     vec4 clear_colour,
@@ -13,7 +13,6 @@ void vulkan_renderpass_create(
     u8 clear_flags,
     b8 has_prev_pass,
     b8 has_next_pass) {
-
     out_renderpass->clear_flags = clear_flags;
     out_renderpass->render_area = render_area;
     out_renderpass->clear_colour = clear_colour;
@@ -34,16 +33,17 @@ void vulkan_renderpass_create(
     // Color attachment
     b8 do_clear_colour = (out_renderpass->clear_flags & RENDERPASS_CLEAR_COLOUR_BUFFER_FLAG) != 0;
     VkAttachmentDescription color_attachment;
-    color_attachment.format = context->swapchain.image_format.format; // TODO: configurable
+    color_attachment.format = context->swapchain.image_format.format;  // TODO: configurable
     color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    color_attachment.loadOp = do_clear_colour ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_CLEAR;
+    color_attachment.loadOp = do_clear_colour ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
     color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     // If coming from a previous pass, should already be VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL. Otherwise undefined.
     color_attachment.initialLayout = has_prev_pass ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
+
     // If going to another pass, use VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL. Otherwise VK_IMAGE_LAYOUT_PRESENT_SRC_KHR.
-    color_attachment.finalLayout = has_next_pass ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;  // Transitioned to after the render pass 
+    color_attachment.finalLayout = has_next_pass ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;  // Transitioned to after the render pass
     color_attachment.flags = 0;
 
     attachment_descriptions[attachment_description_count] = color_attachment;
@@ -125,6 +125,7 @@ void vulkan_renderpass_create(
         &out_renderpass->handle));
 }
 
+
 void vulkan_renderpass_destroy(vulkan_context* context, vulkan_renderpass* renderpass) {
     if (renderpass && renderpass->handle) {
         vkDestroyRenderPass(context->device.logical_device, renderpass->handle, context->allocator);
@@ -136,7 +137,6 @@ void vulkan_renderpass_begin(
     vulkan_command_buffer* command_buffer,
     vulkan_renderpass* renderpass,
     VkFramebuffer frame_buffer) {
-
     VkRenderPassBeginInfo begin_info = {VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     begin_info.renderPass = renderpass->handle;
     begin_info.framebuffer = frame_buffer;
@@ -165,7 +165,7 @@ void vulkan_renderpass_begin(
         clear_values[begin_info.clearValueCount].depthStencil.stencil = do_clear_stencil ? renderpass->stencil : 0;
         begin_info.clearValueCount++;
     }
-
+    
     begin_info.pClearValues = begin_info.clearValueCount > 0 ? clear_values : 0;
 
     vkCmdBeginRenderPass(command_buffer->handle, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
@@ -176,3 +176,5 @@ void vulkan_renderpass_end(vulkan_command_buffer* command_buffer, vulkan_renderp
     vkCmdEndRenderPass(command_buffer->handle);
     command_buffer->state = COMMAND_BUFFER_STATE_RECORDING;
 }
+
+

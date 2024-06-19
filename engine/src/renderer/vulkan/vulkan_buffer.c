@@ -14,6 +14,7 @@ b8 vulkan_buffer_create(
     u32 memory_property_flags,
     b8 bind_on_create,
     vulkan_buffer* out_buffer) {
+
     czero_memory(out_buffer, sizeof(vulkan_buffer));
     out_buffer->total_size = size;
     out_buffer->usage = usage;

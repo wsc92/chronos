@@ -17,7 +17,7 @@ b8 material_loader_load(struct resource_loader* self, const char* name, resource
 
     char* format_str = "%s/%s/%s%s";
     char full_file_path[512];
-    string_format(full_file_path, format_str, resource_system_base_path(), self->type_path, name, ".kmt");
+    string_format(full_file_path, format_str, resource_system_base_path(), self->type_path, name, ".cmt");
 
     file_handle f;
     if (!filesystem_open(full_file_path, FILE_MODE_READ, false, &f)) {
