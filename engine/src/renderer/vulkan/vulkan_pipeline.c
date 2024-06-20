@@ -79,10 +79,10 @@ b8 vulkan_graphics_pipeline_create(
     color_blend_state_create_info.logicOp = VK_LOGIC_OP_COPY;
     color_blend_state_create_info.attachmentCount = 1;
     color_blend_state_create_info.pAttachments = &color_blend_attachment_state;
+    
     // Dynamic state
     const u32 dynamic_state_count = 3;
-
-    VkDynamicState dynamic_states[dynamic_state_count] = {
+    VkDynamicState dynamic_states[3] = {
         VK_DYNAMIC_STATE_VIEWPORT,
         VK_DYNAMIC_STATE_SCISSOR,
         VK_DYNAMIC_STATE_LINE_WIDTH};

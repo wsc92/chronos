@@ -113,7 +113,7 @@ void geometry_system_release(geometry* geometry) {
 
         // Take a copy of the id;
         u32 id = geometry->id;
-        if (ref->geometry.id == geometry->id) {
+        if (ref->geometry.id == id) {
             if (ref->reference_count > 0) {
                 ref->reference_count--;
             }
@@ -227,7 +227,7 @@ b8 create_default_geometries(geometry_system_state* state) {
     // Acquire the default material.
     state->default_geometry.material = material_system_get_default();
 
-        // Create default 2d geometry.
+    // Create default 2d geometry.
     vertex_2d verts2d[4];
     czero_memory(verts2d, sizeof(vertex_2d) * 4);
     verts2d[0].position.x = -0.5 * f;  // 0    3
@@ -296,7 +296,7 @@ geometry_config geometry_system_generate_plane_config(f32 width, f32 height, u32
     config.vertex_size = sizeof(vertex_3d);
     config.vertex_count = x_segment_count * y_segment_count * 4;  // 4 verts per segment
     config.vertices = callocate(sizeof(vertex_3d) * config.vertex_count, MEMORY_TAG_ARRAY);
-    config.index_count = sizeof(u32);
+    config.index_size = sizeof(u32);
     config.index_count = x_segment_count * y_segment_count * 6;  // 6 indices per segment
     config.indices = callocate(sizeof(u32) * config.index_count, MEMORY_TAG_ARRAY);
 

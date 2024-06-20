@@ -111,7 +111,7 @@ material* material_system_acquire(const char* name) {
         CERROR("Failed to load material resource, returning nullptr.");
         return 0;
     }
-    material* m;
+    material* m = 0;
     if (material_resource.data) {
         m = material_system_acquire_from_config(*(material_config*)material_resource.data);
     }

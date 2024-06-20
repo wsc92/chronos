@@ -220,17 +220,14 @@ b8 application_create(game* game_inst) {
     // TODO: temp
 
     // Load up a plane configuration, and load geometry from it.
-    // FIX: 
-    // geometry_config g_config = geometry_system_generate_plane_config(10.0f, 5.0f, 5, 5, 5.0f, 2.0f, "test geometry", "test_material");
+    geometry_config g_config = geometry_system_generate_plane_config(10.0f, 5.0f, 5, 5, 5.0f, 2.0f, "test geometry", "test_material");
     // NOTE: this function probably works but should test
-    // app_state->test_geometry = geometry_system_acquire_from_config(g_config, true);
+    app_state->test_geometry = geometry_system_acquire_from_config(g_config, true);
 
     // Clean up the allocations for the geometry config.
-    //cfree(g_config.vertices, sizeof(vertex_3d) * g_config.vertex_count, MEMORY_TAG_ARRAY);
-    //cfree(g_config.indices, sizeof(u32) * g_config.index_count, MEMORY_TAG_ARRAY);
+    cfree(g_config.vertices, sizeof(vertex_3d) * g_config.vertex_count, MEMORY_TAG_ARRAY);
+    cfree(g_config.indices, sizeof(u32) * g_config.index_count, MEMORY_TAG_ARRAY);
 
-    // Load up default geometry.
-    app_state->test_geometry = geometry_system_get_default();
 
     // Load up some test UI geometry.
     geometry_config ui_config;
@@ -270,6 +267,9 @@ b8 application_create(game* game_inst) {
 
     // Get UI geometry from config.
     app_state->test_ui_geometry = geometry_system_acquire_from_config(ui_config, true);
+
+    // Load up default geometry.
+    //app_state->test_geometry = geometry_system_get_default();
     // TODO: end temp
 
     // Initialize the game.
@@ -289,7 +289,7 @@ b8 application_run() {
     clock_start(&app_state->clock);
     clock_update(&app_state->clock);
     app_state->last_time = app_state->clock.elapsed;
-    f64 running_time = 0;
+    //f64 running_time = 0;
     u8 frame_count = 0;
     f64 target_frame_seconds = 1.0f / 60;
 
@@ -336,8 +336,8 @@ b8 application_run() {
             geometry_render_data test_ui_render;
             test_ui_render.geometry = app_state->test_ui_geometry;
             test_ui_render.model = mat4_translation((vec3){0, 0, 0});
-            packet.ui_geometry_count = 0;
-            packet.ui_geometries = 0;
+            packet.ui_geometry_count = 1;
+            packet.ui_geometries = &test_ui_render;
             // TODO: end temp
 
             renderer_draw_frame(&packet);
@@ -345,7 +345,7 @@ b8 application_run() {
             // Figure out how long the frame took and, if below
             f64 frame_end_time = platform_get_absolute_time();
             f64 frame_elapsed_time = frame_end_time - frame_start_time;
-            running_time += frame_elapsed_time;
+            // running_time += frame_elapsed_time;
             f64 remaining_seconds = target_frame_seconds - frame_elapsed_time;
 
             if (remaining_seconds > 0) {
