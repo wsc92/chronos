@@ -23,6 +23,7 @@ void camera_yaw(game_state* state, f32 amount) {
     state->camera_euler.y += amount;
     state->camera_view_dirty = true;
 }
+
 void camera_pitch(game_state* state, f32 amount) {
     state->camera_euler.x += amount;
 
