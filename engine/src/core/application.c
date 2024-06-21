@@ -2,6 +2,7 @@
 #include "../game_types.h"
 
 #include "logger.h"
+
 #include "../platform/platform.h"
 #include "cmemory.h"
 #include "event.h"
@@ -13,13 +14,16 @@
 
 #include "../renderer/renderer_frontend.h"
 
+// systems
 #include "../systems/texture_system.h"
 #include "../systems/material_system.h"
 #include "../systems/geometry_system.h"
 #include "../systems/resource_system.h"
+#include "../systems/shader_system.h"
 
 // TODO: temp
 #include "../math/cmath.h"
+#include "../math/geometry_utils.h"
 // TODO: end temp
 
 typedef struct application_state {
@@ -35,9 +39,6 @@ typedef struct application_state {
     u64 event_system_memory_requirement;
     void* event_system_state;
 
-    u64 memory_system_memory_requirement;
-    void* memory_system_state;
-
     u64 logging_system_memory_requirement;
     void* logging_system_state;
 
@@ -49,6 +50,9 @@ typedef struct application_state {
 
     u64 resource_system_memory_requirement;
     void* resource_system_state;
+
+    u64 shader_system_memory_requirement;
+    void* shader_system_state;
 
     u64 renderer_system_memory_requirement;
     void* renderer_system_state;
@@ -66,6 +70,7 @@ typedef struct application_state {
     geometry* test_geometry;
     geometry* test_ui_geometry;
     // TODO: end temp
+
 } application_state;
 
 static application_state* app_state;
@@ -81,24 +86,54 @@ b8 event_on_debug_event(u16 code, void* sender, void* listener_inst, event_conte
         "cobblestone",
         "paving",
         "paving2"};
+    const char* spec_names[3] = {
+        "cobblestone_SPEC",
+        "paving_SPEC",
+        "paving2_SPEC"};
+    const char* normal_names[3] = {
+        "cobblestone_NRM",
+        "paving_NRM",
+        "paving2_NRM"};
     static i8 choice = 2;
 
-    // Save off the old name.
+    // Save off the old names.
     const char* old_name = names[choice];
+    const char* old_spec_name = names[choice];
+    const char* old_norm_name = names[choice];
 
     choice++;
     choice %= 3;
 
-    // Acquire the new texture.
     if (app_state->test_geometry) {
+        // Acquire the new diffuse texture.
         app_state->test_geometry->material->diffuse_map.texture = texture_system_acquire(names[choice], true);
         if (!app_state->test_geometry->material->diffuse_map.texture) {
-            CWARN("event_on_debug_event no texture! using default");
+            CWARN("event_on_debug_event no diffuse texture! using default");
             app_state->test_geometry->material->diffuse_map.texture = texture_system_get_default_texture();
         }
 
-        // Release the old texture.
+        // Release the old diffuse texture.
         texture_system_release(old_name);
+
+        // Acquire the new spec texture.
+        app_state->test_geometry->material->specular_map.texture = texture_system_acquire(spec_names[choice], true);
+        if (!app_state->test_geometry->material->specular_map.texture) {
+            CWARN("event_on_debug_event no spec texture! using default");
+            app_state->test_geometry->material->specular_map.texture = texture_system_get_default_specular_texture();
+        }
+
+        // Release the old spec texture.
+        texture_system_release(old_spec_name);
+
+        // Acquire the new normal texture.
+        app_state->test_geometry->material->normal_map.texture = texture_system_acquire(normal_names[choice], true);
+        if (!app_state->test_geometry->material->normal_map.texture) {
+            CWARN("event_on_debug_event no normal texture! using default");
+            app_state->test_geometry->material->normal_map.texture = texture_system_get_default_normal_texture();
+        }
+
+        // Release the old spec normal.
+        texture_system_release(old_norm_name);
     }
 
     return true;
@@ -111,26 +146,34 @@ b8 application_create(game* game_inst) {
         return false;
     }
 
+    // Memory system must be the first thing to be stood up.
+    memory_system_configuration memory_system_config = {};
+    memory_system_config.total_alloc_size = GIBIBYTES(1);
+    if (!memory_system_initialize(memory_system_config)) {
+        CERROR("Failed to initialize memory system; shutting down.");
+        return false;
+    }
+
+    // Allocate the game state.
+    game_inst->state = callocate(game_inst->state_memory_requirement, MEMORY_TAG_GAME);
+
+    // Stand up the application state.
     game_inst->application_state = callocate(sizeof(application_state), MEMORY_TAG_APPLICATION);
     app_state = game_inst->application_state;
     app_state->game_inst = game_inst;
     app_state->is_running = false;
     app_state->is_suspended = false;
 
+    // Create a linear allocator for all systems (except memory) to use.
     u64 systems_allocator_total_size = 64 * 1024 * 1024;  // 64 mb
     linear_allocator_create(systems_allocator_total_size, 0, &app_state->systems_allocator);
 
-    // Initialize subsystems.
+    // Initialize other subsystems.
 
     // Events
     event_system_initialize(&app_state->event_system_memory_requirement, 0);
     app_state->event_system_state = linear_allocator_allocate(&app_state->systems_allocator, app_state->event_system_memory_requirement);
     event_system_initialize(&app_state->event_system_memory_requirement, app_state->event_system_state);
-
-    // Memory
-    memory_system_initialize(&app_state->memory_system_memory_requirement, 0);
-    app_state->memory_system_state = linear_allocator_allocate(&app_state->systems_allocator, app_state->memory_system_memory_requirement);
-    memory_system_initialize(&app_state->memory_system_memory_requirement, app_state->memory_system_state);
 
     // Logging
     initialize_logging(&app_state->logging_system_memory_requirement, 0);
@@ -179,6 +222,19 @@ b8 application_create(game* game_inst) {
         return false;
     }
 
+    // Shader system
+    shader_system_config shader_sys_config;
+    shader_sys_config.max_shader_count = 1024;
+    shader_sys_config.max_uniform_count = 128;
+    shader_sys_config.max_global_textures = 31;
+    shader_sys_config.max_instance_textures = 31;
+    shader_system_initialize(&app_state->shader_system_memory_requirement, 0, shader_sys_config);
+    app_state->shader_system_state = linear_allocator_allocate(&app_state->systems_allocator, app_state->shader_system_memory_requirement);
+    if (!shader_system_initialize(&app_state->shader_system_memory_requirement, app_state->shader_system_state, shader_sys_config)) {
+        CFATAL("Failed to initialize shader system. Aborting application.");
+        return false;
+    }
+
     // Renderer system
     renderer_system_initialize(&app_state->renderer_system_memory_requirement, 0, 0);
     app_state->renderer_system_state = linear_allocator_allocate(&app_state->systems_allocator, app_state->renderer_system_memory_requirement);
@@ -218,16 +274,14 @@ b8 application_create(game* game_inst) {
     }
 
     // TODO: temp
-
-    // Load up a plane configuration, and load geometry from it.
-    geometry_config g_config = geometry_system_generate_plane_config(10.0f, 5.0f, 5, 5, 5.0f, 2.0f, "test geometry", "test_material");
-    // NOTE: this function probably works but should test
+    // Load up a cube configuration, and load geometry from it.
+    geometry_config g_config = geometry_system_generate_cube_config(10.0f, 10.0f, 10.0f, 1.0f, 1.0f, "test_cube", "test_material");
+    geometry_generate_tangents(g_config.vertex_count, g_config.vertices, g_config.index_count, g_config.indices);
     app_state->test_geometry = geometry_system_acquire_from_config(g_config, true);
 
     // Clean up the allocations for the geometry config.
     cfree(g_config.vertices, sizeof(vertex_3d) * g_config.vertex_count, MEMORY_TAG_ARRAY);
     cfree(g_config.indices, sizeof(u32) * g_config.index_count, MEMORY_TAG_ARRAY);
-
 
     // Load up some test UI geometry.
     geometry_config ui_config;
@@ -238,24 +292,25 @@ b8 application_create(game* game_inst) {
     string_ncopy(ui_config.material_name, "test_ui_material", MATERIAL_NAME_MAX_LENGTH);
     string_ncopy(ui_config.name, "test_ui_geometry", GEOMETRY_NAME_MAX_LENGTH);
 
-    const f32 f = 512.0f;
-    vertex_2d uiverts [4];
+    const f32 w = 128.0f;
+    const f32 h = 32.0f;
+    vertex_2d uiverts[4];
     uiverts[0].position.x = 0.0f;  // 0    3
     uiverts[0].position.y = 0.0f;  //
     uiverts[0].texcoord.x = 0.0f;  //
     uiverts[0].texcoord.y = 0.0f;  // 2    1
 
-    uiverts[1].position.y = f;
-    uiverts[1].position.x = f;
+    uiverts[1].position.y = h;
+    uiverts[1].position.x = w;
     uiverts[1].texcoord.x = 1.0f;
     uiverts[1].texcoord.y = 1.0f;
 
     uiverts[2].position.x = 0.0f;
-    uiverts[2].position.y = f;
+    uiverts[2].position.y = h;
     uiverts[2].texcoord.x = 0.0f;
     uiverts[2].texcoord.y = 1.0f;
 
-    uiverts[3].position.x = f;
+    uiverts[3].position.x = w;
     uiverts[3].position.y = 0.0;
     uiverts[3].texcoord.x = 1.0f;
     uiverts[3].texcoord.y = 0.0f;
@@ -269,7 +324,7 @@ b8 application_create(game* game_inst) {
     app_state->test_ui_geometry = geometry_system_acquire_from_config(ui_config, true);
 
     // Load up default geometry.
-    //app_state->test_geometry = geometry_system_get_default();
+    // app_state->test_geometry = geometry_system_get_default();
     // TODO: end temp
 
     // Initialize the game.
@@ -289,7 +344,7 @@ b8 application_run() {
     clock_start(&app_state->clock);
     clock_update(&app_state->clock);
     app_state->last_time = app_state->clock.elapsed;
-    //f64 running_time = 0;
+    // f64 running_time = 0;
     u8 frame_count = 0;
     f64 target_frame_seconds = 1.0f / 60;
 
@@ -307,7 +362,6 @@ b8 application_run() {
             f64 delta = (current_time - app_state->last_time);
             f64 frame_start_time = platform_get_absolute_time();
 
-            // Update
             if (!app_state->game_inst->update(app_state->game_inst, (f32)delta)) {
                 CFATAL("Game update failed, shutting down.");
                 app_state->is_running = false;
@@ -328,7 +382,11 @@ b8 application_run() {
             // TODO: temp
             geometry_render_data test_render;
             test_render.geometry = app_state->test_geometry;
-            test_render.model = mat4_identity();
+            //test_render.model = mat4_identity();
+            static f32 angle = 0;
+            angle += (1.0f * delta);
+            quat rotation = quat_from_axis_angle((vec3){0, 1, 0}, angle, true);
+            test_render.model = quat_to_mat4(rotation);  //  quat_to_rotation_matrix(rotation, vec3_zero());
 
             packet.geometry_count = 1;
             packet.geometries = &test_render;
@@ -373,45 +431,36 @@ b8 application_run() {
 
     app_state->is_running = false;
 
-    //Unregister events
+    // Shutdown event system.
     event_unregister(EVENT_CODE_APPLICATION_QUIT, 0, application_on_event);
     event_unregister(EVENT_CODE_KEY_PRESSED, 0, application_on_key);
     event_unregister(EVENT_CODE_KEY_RELEASED, 0, application_on_key);
-    event_unregister(EVENT_CODE_RESIZED, 0 , application_on_resized);
     // TODO: temp
     event_unregister(EVENT_CODE_DEBUG0, 0, event_on_debug_event);
     // TODO: end temp
 
-    // Input
     input_system_shutdown(app_state->input_system_state);
 
-    // Geometry
     geometry_system_shutdown(app_state->geometry_system_state);
 
-    // Material
     material_system_shutdown(app_state->material_system_state);
 
-    // Texture systems
     texture_system_shutdown(app_state->texture_system_state);
 
-    // Renderer
+    shader_system_shutdown(app_state->shader_system_state);
+
     renderer_system_shutdown(app_state->renderer_system_state);
 
-    // Resources
     resource_system_shutdown(app_state->resource_system_state);
 
-    // Platform
     platform_system_shutdown(app_state->platform_system_state);
 
-    // Memory
-    memory_system_shutdown(app_state->memory_system_state);
-
-    // Event
     event_system_shutdown(app_state->event_system_state);
+
+    memory_system_shutdown();
 
     return true;
 }
-
 
 void application_get_framebuffer_size(u32* width, u32* height) {
     *width = app_state->width;
@@ -441,7 +490,7 @@ b8 application_on_key(u16 code, void* sender, void* listener_inst, event_context
             // Block anything else from processing this.
             return true;
         } else if (key_code == KEY_A) {
-            //Example for checking a key_code
+            // Example on checking for a key
             CDEBUG("Explicit - A key pressed!");
         } else {
             CDEBUG("'%c' key pressed in window.", key_code);
@@ -452,7 +501,7 @@ b8 application_on_key(u16 code, void* sender, void* listener_inst, event_context
             // Example on checking for a key
             CDEBUG("Explicit - B key released!");
         } else {
-            CDEBUG("'%c' key released in window.", key_code)
+            CDEBUG("'%c' key released in window.", key_code);
         }
     }
     return false;
@@ -463,28 +512,29 @@ b8 application_on_resized(u16 code, void* sender, void* listener_inst, event_con
         u16 width = context.data.u16[0];
         u16 height = context.data.u16[1];
 
-        // check if different. if so, trigger a resize event.
+        // Check if different. If so, trigger a resize event.
         if (width != app_state->width || height != app_state->height) {
             app_state->width = width;
             app_state->height = height;
 
             CDEBUG("Window resize: %i, %i", width, height);
 
-            // Handle Minimization
+            // Handle minimization
             if (width == 0 || height == 0) {
-                CINFO("Window Minimized, suspending application.");
+                CINFO("Window minimized, suspending application.");
                 app_state->is_suspended = true;
                 return true;
             } else {
-                 if (app_state->is_suspended) {
-                     CINFO("Window restored, resuming application.");
-                     app_state->is_suspended = false;
-                 }
-                 app_state->game_inst->on_resize(app_state->game_inst, width, height);
-                 renderer_on_resized(width, height);
+                if (app_state->is_suspended) {
+                    CINFO("Window restored, resuming application.");
+                    app_state->is_suspended = false;
+                }
+                app_state->game_inst->on_resize(app_state->game_inst, width, height);
+                renderer_on_resized(width, height);
             }
         }
     }
-    // Event purposely not handled to allow other listeners to get this
+
+    // Event purposely not handled to allow other listeners to get this.
     return false;
 }

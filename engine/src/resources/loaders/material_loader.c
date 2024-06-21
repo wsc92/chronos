@@ -31,10 +31,12 @@ b8 material_loader_load(struct resource_loader* self, const char* name, resource
     // TODO: Should be using an allocator here.
     material_config* resource_data = callocate(sizeof(material_config), MEMORY_TAG_MATERIAL_INSTANCE);
     // Set some defaults.
-    resource_data->type = MATERIAL_TYPE_WORLD;
+    resource_data->shader_name = "Builtin.Material"; // Default material.
     resource_data->auto_release = true;
     resource_data->diffuse_colour = vec4_one();  // white.
     resource_data->diffuse_map_name[0] = 0;
+    resource_data->specular_map_name[0] = 0;
+    resource_data->normal_map_name[0] = 0;
     string_ncopy(resource_data->name, name, MATERIAL_NAME_MAX_LENGTH);
 
     // Read each line of the file.
@@ -82,16 +84,23 @@ b8 material_loader_load(struct resource_loader* self, const char* name, resource
             string_ncopy(resource_data->name, trimmed_value, MATERIAL_NAME_MAX_LENGTH);
         } else if (strings_equali(trimmed_var_name, "diffuse_map_name")) {
             string_ncopy(resource_data->diffuse_map_name, trimmed_value, TEXTURE_NAME_MAX_LENGTH);
+        } else if (strings_equali(trimmed_var_name, "specular_map_name")) {
+            string_ncopy(resource_data->specular_map_name, trimmed_value, TEXTURE_NAME_MAX_LENGTH);
+        } else if (strings_equali(trimmed_var_name, "normal_map_name")) {
+            string_ncopy(resource_data->normal_map_name, trimmed_value, TEXTURE_NAME_MAX_LENGTH);
         } else if (strings_equali(trimmed_var_name, "diffuse_colour")) {
             // Parse the colour
             if (!string_to_vec4(trimmed_value, &resource_data->diffuse_colour)) {
                 CWARN("Error parsing diffuse_colour in file '%s'. Using default of white instead.", full_file_path);
                 // NOTE: already assigned above, no need to have it here.
             }
-        } else if (strings_equali(trimmed_var_name, "type")) {
-            // TODO other material types.
-            if (strings_equali(trimmed_value, "ui")) {
-                resource_data->type = MATERIAL_TYPE_UI;
+        } else if (strings_equali(trimmed_var_name, "shader")) {
+            // Take a copy of the material name.
+            resource_data->shader_name = string_duplicate(trimmed_value);
+        } else if (strings_equali(trimmed_var_name, "shininess")) {
+            if(!string_to_f32(trimmed_value, &resource_data->shininess)) {
+                CWARN("Error parsing shininess in file '%s'. Using default of 32.0 instead.", full_file_path);
+                resource_data->shininess = 32.0f;
             }
         }
 

@@ -12,6 +12,8 @@
 typedef struct texture_system_state {
     texture_system_config config;
     texture default_texture;
+    texture default_specular_texture;
+    texture default_normal_texture;
 
     // Array of registered textures.
     texture* registered_textures;
@@ -181,7 +183,7 @@ void texture_system_release(const char* name) {
             // Reset the reference.
             ref.handle = INVALID_ID;
             ref.auto_release = false;
-            CTRACE("Released texture '%s'., Texture unloaded because reference count=0 and auto_release=true.", name);
+            CTRACE("Released texture '%s'., Texture unloaded because reference count=0 and auto_release=true.", name_copy);
         } else {
             CTRACE("Released texture '%s', now has a reference count of '%i' (auto_release=%s).", name_copy, ref.reference_count, ref.auto_release ? "true" : "false");
         }
@@ -202,6 +204,24 @@ texture* texture_system_get_default_texture() {
     return 0;
 }
 
+texture* texture_system_get_default_specular_texture() {
+    if (state_ptr) {
+        return &state_ptr->default_specular_texture;
+    }
+
+    CERROR("texture_system_get_default_specular_texture called before texture system initialization! Null pointer returned.");
+    return 0;
+}
+
+texture* texture_system_get_default_normal_texture() {
+    if (state_ptr) {
+        return &state_ptr->default_normal_texture;
+    }
+
+    CERROR("texture_system_get_default_normal_texture called before texture system initialization! Null pointer returned.");
+    return 0;
+}
+
 b8 create_default_textures(texture_system_state* state) {
     // NOTE: Create default texture, a 256x256 blue/white checkerboard pattern.
     // This is done in code to eliminate asset dependencies.
@@ -209,7 +229,7 @@ b8 create_default_textures(texture_system_state* state) {
     const u32 tex_dimension = 256;
     const u32 channels = 4;
     const u32 pixel_count = tex_dimension * tex_dimension;
-    u8 pixels[262144]; // pixel_count * channels
+    u8 pixels[262144];  // pixel_count * channels
     cset_memory(pixels, 255, sizeof(u8) * pixel_count * channels);
 
     // Each pixel.
@@ -230,6 +250,7 @@ b8 create_default_textures(texture_system_state* state) {
             }
         }
     }
+
     string_ncopy(state->default_texture.name, DEFAULT_TEXTURE_NAME, TEXTURE_NAME_MAX_LENGTH);
     state->default_texture.width = tex_dimension;
     state->default_texture.height = tex_dimension;
@@ -240,12 +261,57 @@ b8 create_default_textures(texture_system_state* state) {
     // Manually set the texture generation to invalid since this is a default texture.
     state->default_texture.generation = INVALID_ID;
 
+    // Specular texture.
+    CTRACE("Creating default specular texture...");
+    u8 spec_pixels[16 * 16 * 4];
+    // Default spec map is black (no specular)
+    cset_memory(spec_pixels, 0, sizeof(u8) * 16 * 16 * 4);
+    string_ncopy(state->default_specular_texture.name, DEFAULT_SPECULAR_TEXTURE_NAME, TEXTURE_NAME_MAX_LENGTH);
+    state->default_specular_texture.width = 16;
+    state->default_specular_texture.height = 16;
+    state->default_specular_texture.channel_count = 4;
+    state->default_specular_texture.generation = INVALID_ID;
+    state->default_specular_texture.has_transparency = false;
+    renderer_create_texture(spec_pixels, &state->default_specular_texture);
+    // Manually set the texture generation to invalid since this is a default texture.
+    state->default_specular_texture.generation = INVALID_ID;
+
+    // Normal texture.
+    CTRACE("Creating default normal texture...");
+    u8 normal_pixels[16 * 16 * 4];  // w * h * channels
+    cset_memory(normal_pixels, 0, sizeof(u8) * 16 * 16 * 4);
+
+    // Each pixel.
+    for (u64 row = 0; row < 16; ++row) {
+        for (u64 col = 0; col < 16; ++col) {
+            u64 index = (row * 16) + col;
+            u64 index_bpp = index * channels;
+            // Set blue, z-axis by default and alpha.
+            normal_pixels[index_bpp + 0] = 128;
+            normal_pixels[index_bpp + 1] = 128;
+            normal_pixels[index_bpp + 2] = 255;
+            normal_pixels[index_bpp + 3] = 255;
+        }
+    }
+
+    string_ncopy(state->default_normal_texture.name, DEFAULT_NORMAL_TEXTURE_NAME, TEXTURE_NAME_MAX_LENGTH);
+    state->default_normal_texture.width = 16;
+    state->default_normal_texture.height = 16;
+    state->default_normal_texture.channel_count = 4;
+    state->default_normal_texture.generation = INVALID_ID;
+    state->default_normal_texture.has_transparency = false;
+    renderer_create_texture(normal_pixels, &state->default_normal_texture);
+    // Manually set the texture generation to invalid since this is a default texture.
+    state->default_normal_texture.generation = INVALID_ID;
+
     return true;
 }
 
 void destroy_default_textures(texture_system_state* state) {
     if (state) {
         destroy_texture(&state->default_texture);
+        destroy_texture(&state->default_specular_texture);
+        destroy_texture(&state->default_normal_texture);
     }
 }
 
@@ -256,18 +322,17 @@ b8 load_texture(const char* texture_name, texture* t) {
         return false;
     }
 
-    // TODO: try different extensions
     image_resource_data* resource_data = img_resource.data;
 
-
     // Use a temporary texture to load into.
- texture temp_texture;
+    texture temp_texture;
     temp_texture.width = resource_data->width;
     temp_texture.height = resource_data->height;
     temp_texture.channel_count = resource_data->channel_count;
 
-   u32 current_generation = t->generation;
+    u32 current_generation = t->generation;
     t->generation = INVALID_ID;
+
     u64 total_size = temp_texture.width * temp_texture.height * temp_texture.channel_count;
     // Check for transparency
     b32 has_transparency = false;
@@ -298,6 +363,7 @@ b8 load_texture(const char* texture_name, texture* t) {
 
     if (current_generation == INVALID_ID) {
         t->generation = 0;
+    } else {
         t->generation = current_generation + 1;
     }
 
