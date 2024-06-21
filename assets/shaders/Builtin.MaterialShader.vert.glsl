@@ -12,6 +12,7 @@ layout(set = 0, binding = 0) uniform global_uniform_object {
 	mat4 view;
 	vec4 ambient_colour;
 	vec3 view_position;
+	int mode;
 } global_ubo;
 
 layout(push_constant) uniform push_constants {
@@ -40,9 +41,11 @@ void main() {
 	out_dto.frag_position = vec3(u_push_constants.model * vec4(in_position, 1.0));
 	// Copy the normal over.
 	mat3 m3_model = mat3(u_push_constants.model);
-	out_dto.normal = m3_model * in_normal;
+    out_dto.normal = normalize(m3_model * in_normal);
 	out_dto.tangent = vec4(normalize(m3_model * in_tangent.xyz), in_tangent.w);
 	out_dto.ambient = global_ubo.ambient_colour;
 	out_dto.view_position = global_ubo.view_position;
     gl_Position = global_ubo.projection * global_ubo.view * u_push_constants.model * vec4(in_position, 1.0);
+
+	out_mode = global_ubo.mode;
 }

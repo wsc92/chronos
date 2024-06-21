@@ -30,9 +30,36 @@ typedef struct renderer_system_state {
     f32 far_clip;
     u32 material_shader_id;
     u32 ui_shader_id;
+    u32 render_mode;
 } renderer_system_state;
 
 static renderer_system_state* state_ptr;
+b8 renderer_on_event(u16 code, void* sender, void* listener_inst, event_context context) {
+    switch (code) {
+        case EVENT_CODE_SET_RENDER_MODE: {
+            renderer_system_state* state = (renderer_system_state*)listener_inst;
+            i32 mode = context.data.i32[0];
+            switch (mode) {
+                default:
+                case RENDERER_VIEW_MODE_DEFAULT:
+                    CDEBUG("Renderer mode set to default.");
+                    state->render_mode = RENDERER_VIEW_MODE_DEFAULT;
+                    break;
+                case RENDERER_VIEW_MODE_LIGHTING:
+                    CDEBUG("Renderer mode set to lighting.");
+                    state->render_mode = RENDERER_VIEW_MODE_LIGHTING;
+                    break;
+                case RENDERER_VIEW_MODE_NORMALS:
+                    CDEBUG("Renderer mode set to normals.");
+                    state->render_mode = RENDERER_VIEW_MODE_NORMALS;
+                    break;
+            }
+            return true;
+        }
+    }
+
+    return false;
+}
 
 #define CRITICAL_INIT(op, msg) \
     if (!op) {                 \
@@ -50,6 +77,9 @@ b8 renderer_system_initialize(u64* memory_requirement, void* state, const char* 
     // TODO: make this configurable.
     renderer_backend_create(RENDERER_BACKEND_TYPE_VULKAN, &state_ptr->backend);
     state_ptr->backend.frame_number = 0;
+    state_ptr->render_mode = RENDERER_VIEW_MODE_DEFAULT;
+
+    event_register(EVENT_CODE_SET_RENDER_MODE, state, renderer_on_event);
 
     // Initialize the backend.
     CRITICAL_INIT(state_ptr->backend.initialize(&state_ptr->backend, application_name), "Renderer backend failed to initialize. Shutting down.");
@@ -113,6 +143,8 @@ void renderer_on_resized(u16 width, u16 height) {
 }
 
 b8 renderer_draw_frame(render_packet* packet) {
+    state_ptr->backend.frame_number++;
+
     // If the begin frame returned successfully, mid-frame operations may continue.
     if (state_ptr->backend.begin_frame(&state_ptr->backend, packet->delta_time)) {
         // World renderpass
@@ -121,13 +153,19 @@ b8 renderer_draw_frame(render_packet* packet) {
             return false;
         }
 
-        if(!shader_system_use_by_id(state_ptr->material_shader_id)) {
+        if (!shader_system_use_by_id(state_ptr->material_shader_id)) {
             CERROR("Failed to use material shader. Render frame failed.");
             return false;
         }
 
         // Apply globals
-        if(!material_system_apply_global(state_ptr->material_shader_id, &state_ptr->projection, &state_ptr->view, &state_ptr->ambient_colour, &state_ptr->view_position)) {
+        if (!material_system_apply_global(
+                state_ptr->material_shader_id,
+                &state_ptr->projection,
+                &state_ptr->view,
+                &state_ptr->ambient_colour,
+                &state_ptr->view_position,
+                state_ptr->render_mode)) {
             CERROR("Failed to use apply globals for material shader. Render frame failed.");
             return false;
         }
@@ -142,10 +180,17 @@ b8 renderer_draw_frame(render_packet* packet) {
                 m = material_system_get_default();
             }
 
-            // Apply the material
-            if (!material_system_apply_instance(m)) {
+            // Update the material if it hasn't already been this frame. This keeps the
+            // same material from being updated multiple times. It still needs to be bound
+            // either way, so this check result gets passed to the backend which either
+            // updates the internal shader bindings and binds them, or only binds them.
+            b8 needs_update = m->render_frame_number != state_ptr->backend.frame_number;
+            if (!material_system_apply_instance(m, needs_update)) {
                 CWARN("Failed to apply material '%s'. Skipping draw.", m->name);
                 continue;
+            } else {
+                // Sync the frame number.
+                m->render_frame_number = state_ptr->backend.frame_number;
             }
 
             // Apply the locals
@@ -174,7 +219,7 @@ b8 renderer_draw_frame(render_packet* packet) {
         }
 
         // Apply globals
-        if (!material_system_apply_global(state_ptr->ui_shader_id, &state_ptr->ui_projection, &state_ptr->ui_view, 0, 0)) {
+        if (!material_system_apply_global(state_ptr->ui_shader_id, &state_ptr->ui_projection, &state_ptr->ui_view, 0, 0, 0)) {
             CERROR("Failed to use apply globals for UI shader. Render frame failed.");
             return false;
         }
@@ -188,10 +233,17 @@ b8 renderer_draw_frame(render_packet* packet) {
             } else {
                 m = material_system_get_default();
             }
-            // Apply the material
-            if (!material_system_apply_instance(m)) {
+            // Update the material if it hasn't already been this frame. This keeps the
+            // same material from being updated multiple times. It still needs to be bound
+            // either way, so this check result gets passed to the backend which either
+            // updates the internal shader bindings and binds them, or only binds them.
+            b8 needs_update = m->render_frame_number != state_ptr->backend.frame_number;
+            if (!material_system_apply_instance(m, needs_update)) {
                 CWARN("Failed to apply UI material '%s'. Skipping draw.", m->name);
                 continue;
+            } else {
+                // Sync the frame number.
+                m->render_frame_number = state_ptr->backend.frame_number;
             }
 
             // Apply the locals
@@ -284,9 +336,10 @@ b8 renderer_shader_apply_globals(shader* s) {
     return state_ptr->backend.shader_apply_globals(s);
 }
 
-b8 renderer_shader_apply_instance(shader* s) {
-    return state_ptr->backend.shader_apply_instance(s);
+b8 renderer_shader_apply_instance(shader* s, b8 needs_update) {
+    return state_ptr->backend.shader_apply_instance(s, needs_update);
 }
+
 
 b8 renderer_shader_acquire_instance_resources(shader* s, u32* out_instance_id) {
     return state_ptr->backend.shader_acquire_instance_resources(s, out_instance_id);

@@ -21,6 +21,7 @@ typedef struct material_shader_uniform_locations {
     u16 specular_texture;
     u16 normal_texture;
     u16 model;
+    u16 render_mode;
 } material_shader_uniform_locations;
 
 typedef struct ui_shader_uniform_locations {
@@ -92,6 +93,7 @@ b8 material_system_initialize(u64* memory_requirement, void* state, material_sys
     state_ptr->material_locations.ambient_colour = INVALID_ID_U16;
     state_ptr->material_locations.shininess = INVALID_ID_U16;
     state_ptr->material_locations.model = INVALID_ID_U16;
+    state_ptr->material_locations.render_mode = INVALID_ID_U16;
 
     state_ptr->ui_shader_id = INVALID_ID;
     state_ptr->ui_locations.diffuse_colour = INVALID_ID_U16;
@@ -123,6 +125,7 @@ b8 material_system_initialize(u64* memory_requirement, void* state, material_sys
         state_ptr->registered_materials[i].id = INVALID_ID;
         state_ptr->registered_materials[i].generation = INVALID_ID;
         state_ptr->registered_materials[i].internal_id = INVALID_ID;
+        state_ptr->registered_materials[i].render_frame_number = INVALID_ID;
     }
 
     if (!create_default_material(state_ptr)) {
@@ -228,6 +231,7 @@ material* material_system_acquire_from_config(material_config config) {
                 state_ptr->material_locations.normal_texture = shader_system_uniform_index(s, "normal_texture");
                 state_ptr->material_locations.shininess = shader_system_uniform_index(s, "shininess");
                 state_ptr->material_locations.model = shader_system_uniform_index(s, "model");
+                state_ptr->material_locations.render_mode = shader_system_uniform_index(s, "mode");
             } else if (state_ptr->ui_shader_id == INVALID_ID && strings_equal(config.shader_name, BUILTIN_SHADER_NAME_UI)) {
                 state_ptr->ui_shader_id = s->id;
                 state_ptr->ui_locations.projection = shader_system_uniform_index(s, "projection");
@@ -308,12 +312,20 @@ material* material_system_get_default() {
         return false;                                 \
     }
 
-b8 material_system_apply_global(u32 shader_id, const mat4* projection, const mat4* view, const vec4* ambient_colour, const vec3* view_position) {
+b8 material_system_apply_global(
+        u32 shader_id,
+        const mat4* projection,
+        const mat4* view,
+        const vec4* ambient_colour,
+        const vec3* view_position,
+        u32 render_mode) {
+
     if (shader_id == state_ptr->material_shader_id) {
         MATERIAL_APPLY_OR_FAIL(shader_system_uniform_set_by_index(state_ptr->material_locations.projection, projection));
         MATERIAL_APPLY_OR_FAIL(shader_system_uniform_set_by_index(state_ptr->material_locations.view, view));
         MATERIAL_APPLY_OR_FAIL(shader_system_uniform_set_by_index(state_ptr->material_locations.ambient_colour, ambient_colour));
         MATERIAL_APPLY_OR_FAIL(shader_system_uniform_set_by_index(state_ptr->material_locations.view_position, view_position));
+        MATERIAL_APPLY_OR_FAIL(shader_system_uniform_set_by_index(state_ptr->material_locations.render_mode, &render_mode));
     } else if (shader_id == state_ptr->ui_shader_id) {
         MATERIAL_APPLY_OR_FAIL(shader_system_uniform_set_by_index(state_ptr->ui_locations.projection, projection));
         MATERIAL_APPLY_OR_FAIL(shader_system_uniform_set_by_index(state_ptr->ui_locations.view, view));
@@ -325,25 +337,28 @@ b8 material_system_apply_global(u32 shader_id, const mat4* projection, const mat
     return true;
 }
 
-b8 material_system_apply_instance(material* m) {
+b8 material_system_apply_instance(material* m, b8 needs_update) {
     // Apply instance-level uniforms.
     MATERIAL_APPLY_OR_FAIL(shader_system_bind_instance(m->internal_id));
-    if (m->shader_id == state_ptr->material_shader_id) {
-        // Material shader
-        MATERIAL_APPLY_OR_FAIL(shader_system_uniform_set_by_index(state_ptr->material_locations.diffuse_colour, &m->diffuse_colour));
-        MATERIAL_APPLY_OR_FAIL(shader_system_uniform_set_by_index(state_ptr->material_locations.diffuse_texture, m->diffuse_map.texture));
-        MATERIAL_APPLY_OR_FAIL(shader_system_uniform_set_by_index(state_ptr->material_locations.specular_texture, m->specular_map.texture));
-        MATERIAL_APPLY_OR_FAIL(shader_system_uniform_set_by_index(state_ptr->material_locations.normal_texture, m->normal_map.texture));
-        MATERIAL_APPLY_OR_FAIL(shader_system_uniform_set_by_index(state_ptr->material_locations.shininess, &m->shininess));
-    } else if (m->shader_id == state_ptr->ui_shader_id) {
-        // UI shader
-        MATERIAL_APPLY_OR_FAIL(shader_system_uniform_set_by_index(state_ptr->ui_locations.diffuse_colour, &m->diffuse_colour));
-        MATERIAL_APPLY_OR_FAIL(shader_system_uniform_set_by_index(state_ptr->ui_locations.diffuse_texture, m->diffuse_map.texture));
-    } else {
-        CERROR("material_system_apply_instance(): Unrecognized shader id '%d' on shader '%s'.", m->shader_id, m->name);
-        return false;
+
+    if (needs_update) {
+        if (m->shader_id == state_ptr->material_shader_id) {
+            // Material shader
+            MATERIAL_APPLY_OR_FAIL(shader_system_uniform_set_by_index(state_ptr->material_locations.diffuse_colour, &m->diffuse_colour));
+            MATERIAL_APPLY_OR_FAIL(shader_system_uniform_set_by_index(state_ptr->material_locations.diffuse_texture, m->diffuse_map.texture));
+            MATERIAL_APPLY_OR_FAIL(shader_system_uniform_set_by_index(state_ptr->material_locations.specular_texture, m->specular_map.texture));
+            MATERIAL_APPLY_OR_FAIL(shader_system_uniform_set_by_index(state_ptr->material_locations.normal_texture, m->normal_map.texture));
+            MATERIAL_APPLY_OR_FAIL(shader_system_uniform_set_by_index(state_ptr->material_locations.shininess, &m->shininess));
+        } else if (m->shader_id == state_ptr->ui_shader_id) {
+            // UI shader
+            MATERIAL_APPLY_OR_FAIL(shader_system_uniform_set_by_index(state_ptr->ui_locations.diffuse_colour, &m->diffuse_colour));
+            MATERIAL_APPLY_OR_FAIL(shader_system_uniform_set_by_index(state_ptr->ui_locations.diffuse_texture, m->diffuse_map.texture));
+        } else {
+            CERROR("material_system_apply_instance(): Unrecognized shader id '%d' on shader '%s'.", m->shader_id, m->name);
+            return false;
+        }
     }
-    MATERIAL_APPLY_OR_FAIL(shader_system_apply_instance());
+    MATERIAL_APPLY_OR_FAIL(shader_system_apply_instance(needs_update));
 
     return true;
 }
@@ -375,14 +390,15 @@ b8 load_material(material_config config, material* m) {
     if (string_length(config.diffuse_map_name) > 0) {
         m->diffuse_map.use = TEXTURE_USE_MAP_DIFFUSE;
         m->diffuse_map.texture = texture_system_acquire(config.diffuse_map_name, true);
+        // Configured, but not found.
         if (!m->diffuse_map.texture) {
             CWARN("Unable to load texture '%s' for material '%s', using default.", config.diffuse_map_name, m->name);
             m->diffuse_map.texture = texture_system_get_default_texture();
         }
     } else {
-        // NOTE: Only set for clarity, as call to kzero_memory above does this already.
-        m->diffuse_map.use = TEXTURE_USE_UNKNOWN;
-        m->diffuse_map.texture = 0;
+        // This is done when a texture is not configured, as opposed to when it is configured and not found (above).
+        m->diffuse_map.use = TEXTURE_USE_MAP_DIFFUSE;
+        m->diffuse_map.texture = texture_system_get_default_diffuse_texture();
     }
 
     // Specular map
@@ -394,9 +410,9 @@ b8 load_material(material_config config, material* m) {
             m->specular_map.texture = texture_system_get_default_specular_texture();
         }
     } else {
-        // NOTE: Only set for clarity, as call to kzero_memory above does this already.
-        m->specular_map.use = TEXTURE_USE_UNKNOWN;
-        m->specular_map.texture = 0;
+        // NOTE: Only set for clarity, as call to czero_memory above does this already.
+        m->specular_map.use = TEXTURE_USE_MAP_SPECULAR;
+        m->specular_map.texture = texture_system_get_default_specular_texture();
     }
 
     // Normal map
@@ -453,6 +469,7 @@ void destroy_material(material* m) {
     m->id = INVALID_ID;
     m->generation = INVALID_ID;
     m->internal_id = INVALID_ID;
+    m->render_frame_number = INVALID_ID;
 }
 
 b8 create_default_material(material_system_state* state) {
