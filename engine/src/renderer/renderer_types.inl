@@ -227,7 +227,7 @@ typedef struct renderer_backend {
      * @param out_instance_id A pointer to hold the new instance identifier.
      * @return True on success; otherwise false.
      */
-    b8 (*shader_acquire_instance_resources)(struct shader* s, u32* out_instance_id);
+    b8 (*shader_acquire_instance_resources)(struct shader* s, texture_map** maps, u32* out_instance_id);
 
     /**
      * @brief Releases internal instance-level resources for the given instance id.
@@ -247,6 +247,22 @@ typedef struct renderer_backend {
      * @return b8 True on success; otherwise false.
      */
     b8 (*shader_set_uniform)(struct shader* frontend_shader, struct shader_uniform* uniform, const void* value);
+
+
+    /**
+     * @brief Acquires internal resources for the given texture map.
+     * 
+     * @param map A pointer to the texture map to obtain resources for.
+     * @return True on success; otherwise false.
+     */
+    b8 (*texture_map_acquire_resources)(struct texture_map* map);
+
+    /**
+     * @brief Releases internal resources for the given texture map.
+     * 
+     * @param map A pointer to the texture map to release resources from.
+     */
+    void (*texture_map_release_resources)(struct texture_map* map);
 
 } renderer_backend;
 
