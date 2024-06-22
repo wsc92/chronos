@@ -2,7 +2,6 @@
 
 #include "../math/math_types.h"
 
-
 /** @brief Pre-defined resource types. */
 typedef enum resource_type {
     /** @brief Text resource type. */
@@ -13,31 +12,48 @@ typedef enum resource_type {
     RESOURCE_TYPE_IMAGE,
     /** @brief Material resource type. */
     RESOURCE_TYPE_MATERIAL,
-    /** @brief Static mesh resource type. */
-    RESOURCE_TYPE_STATIC_MESH,
     /** @brief Shader resource type (or more accurately shader config). */
     RESOURCE_TYPE_SHADER,
-   /** @brief Mesh resource type (collection of geometry configs). */
+    /** @brief Mesh resource type (collection of geometry configs). */
     RESOURCE_TYPE_MESH,
     /** @brief Custom resource type. Used by loaders outside the core engine. */
     RESOURCE_TYPE_CUSTOM
 } resource_type;
 
+/**
+ * @brief A generic structure for a resource. All resource loaders
+ * load data into these.
+ */
 typedef struct resource {
+    /** @brief The identifier of the loader which handles this resource. */
     u32 loader_id;
+    /** @brief The name of the resource. */
     const char* name;
+    /** @brief The full file path of the resource. */
     char* full_path;
+    /** @brief The size of the resource data in bytes. */
     u64 data_size;
+    /** @brief The resource data. */
     void* data;
 } resource;
 
+/**
+ * @brief A structure to hold image resource data.
+ */
 typedef struct image_resource_data {
+    /** @brief The number of channels. */
     u8 channel_count;
+    /** @brief The width of the image. */
     u32 width;
+    /** @brief The height of the image. */
     u32 height;
+    /** @brief The pixel data of the image. */
     u8* pixels;
 } image_resource_data;
 
+/**
+ * @brief The maximum length of a texture name.
+ */
 #define TEXTURE_NAME_MAX_LENGTH 512
 
 typedef enum texture_flag {
@@ -52,20 +68,33 @@ typedef enum texture_flag {
 /** @brief Holds bit flags for textures.. */
 typedef u8 texture_flag_bits;
 
+/**
+ * @brief Represents a texture.
+ */
 typedef struct texture {
+    /** @brief The unique texture identifier. */
     u32 id;
+    /** @brief The texture width. */
     u32 width;
+    /** @brief The texture height. */
     u32 height;
+    /** @brief The number of channels in the texture. */
     u8 channel_count;
     /** @brief Holds various flags for this texture. */
     texture_flag_bits flags;
+    /** @brief The texture generation. Incremented every time the data is reloaded. */
     u32 generation;
+    /** @brief The texture name. */
     char name[TEXTURE_NAME_MAX_LENGTH];
+    /** @brief The raw texture data (pixels). */
     void* internal_data;
 } texture;
 
+/** @brief A collection of texture uses */
 typedef enum texture_use {
+    /** @brief An unknown use. This is default, but should never actually be used. */
     TEXTURE_USE_UNKNOWN = 0x00,
+    /** @brief The texture is used as a diffuse map. */
     TEXTURE_USE_MAP_DIFFUSE = 0x01,
     /** @brief The texture is used as a specular map. */
     TEXTURE_USE_MAP_SPECULAR = 0x02,
@@ -88,8 +117,14 @@ typedef enum texture_repeat {
     TEXTURE_REPEAT_CLAMP_TO_BORDER = 0x4
 } texture_repeat;
 
+/**
+ * @brief A structure which maps a texture, use and
+ * other properties.
+ */
 typedef struct texture_map {
+    /** @brief A pointer to a texture. */
     texture* texture;
+    /** @brief The use of the texture */
     texture_use use;
     /** @brief Texture filtering mode for minification. */
     texture_filter filter_minify;
@@ -105,15 +140,25 @@ typedef struct texture_map {
     void* internal_data;
 } texture_map;
 
+/** @brief The maximum length of a material name. */
 #define MATERIAL_NAME_MAX_LENGTH 256
 
+/**
+ * @brief Material configuration typically loaded from
+ * a file or created in code to load a material from.
+ */
 typedef struct material_config {
+    /** @brief The name of the material. */
     char name[MATERIAL_NAME_MAX_LENGTH];
+    /** @brief The material type. */
     char* shader_name;
+    /** @brief Indicates if the material should be automatically released when no references to it remain. */
     b8 auto_release;
+    /** @brief The diffuse colour of the material. */
     vec4 diffuse_colour;
     /** @brief The shininess of the material. */
     f32 shininess;
+    /** @brief The diffuse map name. */
     char diffuse_map_name[TEXTURE_NAME_MAX_LENGTH];
     /** @brief The specular map name. */
     char specular_map_name[TEXTURE_NAME_MAX_LENGTH];
@@ -121,23 +166,39 @@ typedef struct material_config {
     char normal_map_name[TEXTURE_NAME_MAX_LENGTH];
 } material_config;
 
+/**
+ * @brief A material, which represents various properties
+ * of a surface in the world such as texture, colour,
+ * bumpiness, shininess and more.
+ */
 typedef struct material {
+    /** @brief The material id. */
     u32 id;
+    /** @brief The material generation. Incremented every time the material is changed. */
     u32 generation;
+    /** @brief The internal material id. Used by the renderer backend to map to internal resources. */
     u32 internal_id;
+    /** @brief The material name. */
     char name[MATERIAL_NAME_MAX_LENGTH];
+    /** @brief The diffuse colour. */
     vec4 diffuse_colour;
+    /** @brief The diffuse texture map. */
     texture_map diffuse_map;
     /** @brief The specular texture map. */
     texture_map specular_map;
     /** @brief The normal texture map. */
     texture_map normal_map;
+
+    /** @brief The material shininess, determines how concentrated the specular lighting is. */
     f32 shininess;
+
     u32 shader_id;
+
     /** @brief Synced to the renderer's current frame number when the material has been applied that frame. */
     u32 render_frame_number;
 } material;
 
+/** @brief The maximum length of a geometry name. */
 #define GEOMETRY_NAME_MAX_LENGTH 256
 
 /**
@@ -145,10 +206,15 @@ typedef struct material {
  * Typically (but not always, depending on use) paired with a material.
  */
 typedef struct geometry {
+    /** @brief The geometry identifier. */
     u32 id;
+    /** @brief The internal geometry identifier, used by the renderer backend to map to internal resources. */
     u32 internal_id;
+    /** @brief The geometry generation. Incremented every time the geometry changes. */
     u32 generation;
+    /** @brief The geometry name. */
     char name[GEOMETRY_NAME_MAX_LENGTH];
+    /** @brief A pointer to the material associated with this geometry.. */
     material* material;
 } geometry;
 

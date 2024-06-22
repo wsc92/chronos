@@ -41,15 +41,6 @@ void renderer_on_resized(u16 width, u16 height);
 b8 renderer_draw_frame(render_packet* packet);
 
 /**
- * @brief Sets the view matrix in the renderer. NOTE: exposed to public API.
- *
- * @deprecated HACK: this should not be exposed outside the engine.
- * @param view The view matrix to be set.
- * @param view_position The view position to be set.
- */
-CAPI void renderer_set_view(mat4 view, vec3 view_position);
-
-/**
  * @brief Creates a new texture.
  *
  * @param pixels The raw image data to be uploaded to the GPU.
@@ -112,6 +103,30 @@ b8 renderer_create_geometry(geometry* geometry, u32 vertex_size, u32 vertex_coun
  * @param geometry A pointer to the geometry to be destroyed.
  */
 void renderer_destroy_geometry(geometry* geometry);
+
+/**
+ * @brief Draws the given geometry. Should only be called inside a renderpass, within a frame.
+ *
+ * @param data The render data of the geometry to be drawn.
+ */
+void renderer_draw_geometry(geometry_render_data* data);
+
+/**
+ * @brief Begins the given renderpass.
+ *
+ * @param pass A pointer to the renderpass to begin.
+ * @param target A pointer to the render target to be used.
+ * @return True on success; otherwise false.
+ */
+b8 renderer_renderpass_begin(renderpass* pass, render_target* target);
+
+/**
+ * @brief Ends the given renderpass.
+ *
+ * @param pass A pointer to the renderpass to end.
+ * @return True on success; otherwise false.
+ */
+b8 renderer_renderpass_end(renderpass* pass);
 
 /**
  * @brief Obtains a pointer to the renderpass with the given name.
