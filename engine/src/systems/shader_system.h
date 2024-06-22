@@ -73,14 +73,6 @@ typedef struct shader {
 
     char* name;
     /**
-     * @brief Indicates if the shader uses instances. If not, it is assumed
-     * that only global uniforms and samplers are used.
-     */
-    b8 use_instances;
-    /** @brief Indicates if locals are used (typically for model matrices, etc.).*/
-    b8 use_locals;
-
-    /**
      * @brief The amount of bytes that are required for UBO alignment.
      *
      * This is used along with the UBO size to determine the ultimate
@@ -140,10 +132,15 @@ typedef struct shader {
 
     /** @brief The number of push constant ranges. */
     u8 push_constant_range_count;
+
     /** @brief An array of push constant ranges. */
     range push_constant_ranges[32];
+    
     /** @brief The size of all attributes combined, a.k.a. the size of a vertex. */
     u16 attribute_stride;
+
+    /** @brief aUsed to ensure the shader's globals are only updated once per frame. */
+    u64 render_frame_number;
 
     /** @brief An opaque pointer to hold renderer API specific data. Renderer is responsible for creation and destruction of this.  */
     void* internal_data;

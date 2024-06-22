@@ -29,7 +29,7 @@ b8 render_view_ui_on_create(struct render_view* self) {
         // TODO: Set from configuration.
         data->near_clip = -100.0f;
         data->far_clip = 100.0f;
-
+        
         // Default
         data->projection_matrix = mat4_orthographic(0.0f, 1280.0f, 720.0f, 0.0f, data->near_clip, data->far_clip);
         data->view_matrix = mat4_identity();
@@ -114,7 +114,7 @@ b8 render_view_ui_on_render(const struct render_view* self, const struct render_
         }
 
         // Apply globals
-        if (!material_system_apply_global(shader_id, &packet->projection_matrix, &packet->view_matrix, 0, 0, 0)) {
+        if (!material_system_apply_global(shader_id, frame_number, &packet->projection_matrix, &packet->view_matrix, 0, 0, 0)) {
             CERROR("Failed to use apply globals for material shader. Render frame failed.");
             return false;
         }

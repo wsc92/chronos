@@ -1,12 +1,13 @@
 #include "vulkan_image.h"
 
 #include "vulkan_device.h"
+
 #include "../../core/cmemory.h"
 #include "../../core/logger.h"
 
 void vulkan_image_create(
     vulkan_context* context,
-    VkImageType image_type,
+    texture_type type,
     u32 width,
     u32 height,
     VkFormat format,
@@ -16,36 +17,44 @@ void vulkan_image_create(
     b32 create_view,
     VkImageAspectFlags view_aspect_flags,
     vulkan_image* out_image) {
-
     // Copy params
     out_image->width = width;
     out_image->height = height;
 
-    // Creation info
+    // Creation info.
     VkImageCreateInfo image_create_info = {VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
-    image_create_info.imageType = image_type;
+    switch (type) {
+        default:
+        case TEXTURE_TYPE_2D:
+        case TEXTURE_TYPE_CUBE:  // Intentional, there is no cube image type.
+            image_create_info.imageType = VK_IMAGE_TYPE_2D;
+            break;
+    }
+
     image_create_info.extent.width = width;
     image_create_info.extent.height = height;
-    image_create_info.extent.depth = 1;  // Assuming 2D image
-    image_create_info.mipLevels = 1;     // TODO: Support mip mapping
-    image_create_info.arrayLayers = 1;   // TODO: Support number of layers in the image
+    image_create_info.extent.depth = 1;                                 // TODO: Support configurable depth.
+    image_create_info.mipLevels = 4;                                    // TODO: Support mip mapping
+    image_create_info.arrayLayers = type == TEXTURE_TYPE_CUBE ? 6 : 1;  // TODO: Support number of layers in the image.
     image_create_info.format = format;
     image_create_info.tiling = tiling;
     image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     image_create_info.usage = usage;
-    image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;  // TODO: Configurable sample count
-    image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;  // TODO: Configurable sharing mode
+    image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;          // TODO: Configurable sample count.
+    image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;  // TODO: Configurable sharing mode.
+    if (type == TEXTURE_TYPE_CUBE) {
+        image_create_info.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+    }
 
     VK_CHECK(vkCreateImage(context->device.logical_device, &image_create_info, context->allocator, &out_image->handle));
 
-    // Query memory requirements
+    // Query memory requirements.
     VkMemoryRequirements memory_requirements;
     vkGetImageMemoryRequirements(context->device.logical_device, out_image->handle, &memory_requirements);
 
     i32 memory_type = context->find_memory_index(memory_requirements.memoryTypeBits, memory_flags);
     if (memory_type == -1) {
         CERROR("Required memory type not found. Image not valid.");
-        return;
     }
 
     // Allocate memory
@@ -55,36 +64,47 @@ void vulkan_image_create(
     VK_CHECK(vkAllocateMemory(context->device.logical_device, &memory_allocate_info, context->allocator, &out_image->memory));
 
     // Bind the memory
-    VK_CHECK(vkBindImageMemory(context->device.logical_device, out_image->handle, out_image->memory, 0));
+    VK_CHECK(vkBindImageMemory(context->device.logical_device, out_image->handle, out_image->memory, 0));  // TODO: configurable memory offset.
 
     // Create view
     if (create_view) {
-        out_image->view = VK_NULL_HANDLE;
-        vulkan_image_view_create(context, format, out_image, view_aspect_flags);
+        out_image->view = 0;
+        vulkan_image_view_create(context, type, format, out_image, view_aspect_flags);
     }
 }
 
 void vulkan_image_view_create(
     vulkan_context* context,
+    texture_type type,
     VkFormat format,
     vulkan_image* image,
     VkImageAspectFlags aspect_flags) {
-    
     VkImageViewCreateInfo view_create_info = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
     view_create_info.image = image->handle;
-    view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;  // TODO: Make configurable
+    switch (type) {
+        case TEXTURE_TYPE_CUBE:
+            view_create_info.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+            break;
+        default:
+        case TEXTURE_TYPE_2D:
+            view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            break;
+    }
     view_create_info.format = format;
     view_create_info.subresourceRange.aspectMask = aspect_flags;
+
+    // TODO: Make configurable
     view_create_info.subresourceRange.baseMipLevel = 0;
     view_create_info.subresourceRange.levelCount = 1;
     view_create_info.subresourceRange.baseArrayLayer = 0;
-    view_create_info.subresourceRange.layerCount = 1;
+    view_create_info.subresourceRange.layerCount = type == TEXTURE_TYPE_CUBE ? 6 : 1;
 
     VK_CHECK(vkCreateImageView(context->device.logical_device, &view_create_info, context->allocator, &image->view));
 }
 
 void vulkan_image_transition_layout(
     vulkan_context* context,
+    texture_type type,
     vulkan_command_buffer* command_buffer,
     vulkan_image* image,
     VkFormat format,
@@ -100,7 +120,7 @@ void vulkan_image_transition_layout(
     barrier.subresourceRange.baseMipLevel = 0;
     barrier.subresourceRange.levelCount = 1;
     barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount = 1;
+    barrier.subresourceRange.layerCount = type == TEXTURE_TYPE_CUBE ? 6 : 1;
 
     VkPipelineStageFlags source_stage;
     VkPipelineStageFlags dest_stage;
@@ -141,6 +161,7 @@ void vulkan_image_transition_layout(
 
 void vulkan_image_copy_from_buffer(
     vulkan_context* context,
+    texture_type type,
     vulkan_image* image,
     VkBuffer buffer,
     vulkan_command_buffer* command_buffer) {
@@ -154,7 +175,7 @@ void vulkan_image_copy_from_buffer(
     region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     region.imageSubresource.mipLevel = 0;
     region.imageSubresource.baseArrayLayer = 0;
-    region.imageSubresource.layerCount = 1;
+    region.imageSubresource.layerCount = type == TEXTURE_TYPE_CUBE ? 6 : 1;
 
     region.imageExtent.width = image->width;
     region.imageExtent.height = image->height;
@@ -172,15 +193,14 @@ void vulkan_image_copy_from_buffer(
 void vulkan_image_destroy(vulkan_context* context, vulkan_image* image) {
     if (image->view) {
         vkDestroyImageView(context->device.logical_device, image->view, context->allocator);
-        image->view = VK_NULL_HANDLE;
+        image->view = 0;
     }
     if (image->memory) {
         vkFreeMemory(context->device.logical_device, image->memory, context->allocator);
-        image->memory = VK_NULL_HANDLE;
+        image->memory = 0;
     }
     if (image->handle) {
         vkDestroyImage(context->device.logical_device, image->handle, context->allocator);
-        image->handle = VK_NULL_HANDLE;
+        image->handle = 0;
     }
 }
-

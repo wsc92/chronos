@@ -3,11 +3,13 @@
 #include "../containers/hashtable.h"
 #include "../core/logger.h"
 #include "../core/cmemory.h"
+#include "../core/cstring.h"
 #include "../renderer/renderer_frontend.h"
 
 // TODO: temporary - make factory and register instead.
 #include "../renderer/views/render_view_world.h"
 #include "../renderer/views/render_view_ui.h"
+#include "../renderer/views/render_view_skybox.h"
 
 typedef struct render_view_system_state {
     hashtable lookup;
@@ -68,6 +70,11 @@ b8 render_view_system_create(const render_view_config* config) {
         return false;
     }
 
+    if(!config->name || string_length(config->name) < 1) {
+        CERROR("render_view_system_create: name is required");
+        return false;
+    }
+
     if (config->pass_count < 1) {
         CERROR("render_view_system_create - Config must have at least one renderpass.");
         return false;
@@ -97,6 +104,8 @@ b8 render_view_system_create(const render_view_config* config) {
 
     render_view* view = &state_ptr->registered_views[id];
     view->id = id;
+    // TODO: Leaking the name, create a destroy method and kill this.
+    view->name = string_duplicate(config->name);
     view->type = config->type;
     view->custom_shader_name = config->custom_shader_name;
     view->renderpass_count = config->pass_count;
@@ -124,6 +133,12 @@ b8 render_view_system_create(const render_view_config* config) {
         view->on_create = render_view_ui_on_create;
         view->on_destroy = render_view_ui_on_destroy;
         view->on_resize = render_view_ui_on_resize;
+    } else if (config->type == RENDERER_VIEW_KNOWN_TYPE_SKYBOX) {
+        view->on_build_packet = render_view_skybox_on_build_packet;  // For building the packet
+        view->on_render = render_view_skybox_on_render;              // For rendering the packet
+        view->on_create = render_view_skybox_on_create;
+        view->on_destroy = render_view_skybox_on_destroy;
+        view->on_resize = render_view_skybox_on_resize;
     }
 
     // Call the on create
