@@ -13,8 +13,11 @@ b8 renderer_backend_create(renderer_backend_type type, renderer_backend* out_ren
         out_renderer_backend->end_renderpass = vulkan_renderer_end_renderpass;
         out_renderer_backend->resized = vulkan_renderer_backend_on_resized;
         out_renderer_backend->draw_geometry = vulkan_renderer_draw_geometry;
-        out_renderer_backend->create_texture = vulkan_renderer_create_texture;
-        out_renderer_backend->destroy_texture = vulkan_renderer_destroy_texture;
+        out_renderer_backend->texture_create = vulkan_renderer_texture_create;
+        out_renderer_backend->texture_destroy = vulkan_renderer_texture_destroy;
+        out_renderer_backend->texture_create_writeable = vulkan_renderer_texture_create_writeable;
+        out_renderer_backend->texture_resize = vulkan_renderer_texture_resize;
+        out_renderer_backend->texture_write_data = vulkan_renderer_texture_write_data;
         out_renderer_backend->create_geometry = vulkan_renderer_create_geometry;
         out_renderer_backend->destroy_geometry = vulkan_renderer_destroy_geometry;
 
@@ -25,7 +28,7 @@ b8 renderer_backend_create(renderer_backend_type type, renderer_backend* out_ren
         out_renderer_backend->shader_use = vulkan_renderer_shader_use;
         out_renderer_backend->shader_bind_globals = vulkan_renderer_shader_bind_globals;
         out_renderer_backend->shader_bind_instance = vulkan_renderer_shader_bind_instance;
-        
+
         out_renderer_backend->shader_apply_globals = vulkan_renderer_shader_apply_globals;
         out_renderer_backend->shader_apply_instance = vulkan_renderer_shader_apply_instance;
         out_renderer_backend->shader_acquire_instance_resources = vulkan_renderer_shader_acquire_instance_resources;
@@ -33,7 +36,17 @@ b8 renderer_backend_create(renderer_backend_type type, renderer_backend* out_ren
 
         out_renderer_backend->texture_map_acquire_resources = vulkan_renderer_texture_map_acquire_resources;
         out_renderer_backend->texture_map_release_resources = vulkan_renderer_texture_map_release_resources;
-        
+
+        out_renderer_backend->render_target_create = vulkan_renderer_render_target_create;
+        out_renderer_backend->render_target_destroy = vulkan_renderer_render_target_destroy;
+
+        out_renderer_backend->renderpass_create = vulkan_renderpass_create;
+        out_renderer_backend->renderpass_destroy = vulkan_renderpass_destroy;
+        out_renderer_backend->renderpass_get = vulkan_renderer_renderpass_get;
+        out_renderer_backend->window_attachment_get = vulkan_renderer_window_attachment_get;
+        out_renderer_backend->depth_attachment_get = vulkan_renderer_depth_attachment_get;
+        out_renderer_backend->window_attachment_index_get = vulkan_renderer_window_attachment_index_get;
+
         return true;
     }
 

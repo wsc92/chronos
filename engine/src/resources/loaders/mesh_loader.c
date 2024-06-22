@@ -48,7 +48,7 @@ b8 import_obj_material_library_file(const char* mtl_file_path);
 
 b8 load_ksm_file(file_handle* ksm_file, geometry_config** out_geometries_darray);
 b8 write_ksm_file(const char* path, const char* name, u32 geometry_count, geometry_config* geometries);
-b8 write_kmt_file(const char* directory, material_config* config);
+b8 write_cmt_file(const char* directory, material_config* config);
 
 b8 mesh_loader_load(struct resource_loader* self, const char* name, resource* out_resource) {
     if (!self || !name || !out_resource) {
@@ -620,9 +620,9 @@ void process_subobject(vec3* positions, vec3* normals, vec2* tex_coords, mesh_fa
 }
 
 // TODO: Load the material library file, and create material definitions from it.
-// These definitions should be output to .kmt files. These .kmt files are then
+// These definitions should be output to .cmt files. These .cmt files are then
 // loaded when the material is acquired on mesh load.
-// NOTE: This should eventually account for duplicate materials. When the .kmt
+// NOTE: This should eventually account for duplicate materials. When the .cmt
 // files are written, if the file already exists the material should have something
 // such as a number appended to its name and a warning thrown to the console. The artist
 // should make sure material names are unique. When the material is acquired, the _original_
@@ -772,9 +772,9 @@ b8 import_obj_material_library_file(const char* mtl_file_path) {
                         current_config.shininess = 8.0f;
                     }
                     if (hit_name) {
-                        //  Write out a kmt file and move on.
-                        if (!write_kmt_file(mtl_file_path, &current_config)) {
-                            CERROR("Unable to write kmt file.");
+                        //  Write out a cmt file and move on.
+                        if (!write_cmt_file(mtl_file_path, &current_config)) {
+                            CERROR("Unable to write cmt file.");
                             return false;
                         }
 
@@ -790,7 +790,7 @@ b8 import_obj_material_library_file(const char* mtl_file_path) {
         }
     }  // each line
 
-    // Write out the remaining kmt file.
+    // Write out the remaining cmt file.
     // NOTE: Hardcoding default material shader name because all objects imported this way
     // will be treated the same.
     current_config.shader_name = "Shader.Builtin.Material";
@@ -799,8 +799,8 @@ b8 import_obj_material_library_file(const char* mtl_file_path) {
     if (current_config.shininess == 0.0f) {
         current_config.shininess = 8.0f;
     }
-    if (!write_kmt_file(mtl_file_path, &current_config)) {
-        CERROR("Unable to write kmt file.");
+    if (!write_cmt_file(mtl_file_path, &current_config)) {
+        CERROR("Unable to write cmt file.");
         return false;
     }
 
@@ -809,14 +809,14 @@ b8 import_obj_material_library_file(const char* mtl_file_path) {
 }
 
 /**
- * @brief Write out a kohi material file from config. This gets loaded by name later when the mesh
+ * @brief Write out a chronos material file from config. This gets loaded by name later when the mesh
  * is requested for load.
  *
  * @param mtl_file_path The filepath of the material library file which originally contained the material definition.
- * @param config A pointer to the config to be converted to kmt.
+ * @param config A pointer to the config to be converted to cmt.
  * @return True on success; otherwise false.
  */
-b8 write_kmt_file(const char* mtl_file_path, material_config* config) {
+b8 write_cmt_file(const char* mtl_file_path, material_config* config) {
     // NOTE: The .obj file this came from (and resulting .mtl file) sit in the
     // models directory. This moves up a level and back into the materials folder.
     // TODO: Read from config and get an absolute path for output.
@@ -826,12 +826,12 @@ b8 write_kmt_file(const char* mtl_file_path, material_config* config) {
     string_directory_from_path(directory, mtl_file_path);
 
     char full_file_path[512];
-    string_format(full_file_path, format_str, directory, config->name, ".kmt");
+    string_format(full_file_path, format_str, directory, config->name, ".cmt");
     if (!filesystem_open(full_file_path, FILE_MODE_WRITE, false, &f)) {
         CERROR("Error opening material file for writing: '%s'", full_file_path);
         return false;
     }
-    CDEBUG("Writing .kmt file '%s'...", full_file_path);
+    CDEBUG("Writing .cmt file '%s'...", full_file_path);
 
     char line_buffer[512];
     filesystem_write_line(&f, "#material file");

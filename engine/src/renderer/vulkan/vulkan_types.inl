@@ -102,6 +102,8 @@ typedef struct vulkan_device {
 
     /** @brief The chosen supported depth format. */
     VkFormat depth_format;
+    /** @brief The chosen depth format's number of channels.*/
+    u8 depth_channel_count;
 } vulkan_device;
 
 /**
@@ -145,17 +147,11 @@ typedef struct vulkan_renderpass {
     /** @brief The internal renderpass handle. */
     VkRenderPass handle;
     /** @brief The current render area of the renderpass. */
-    vec4 render_area;
-    /** @brief The clear colour used for this renderpass. */
-    vec4 clear_colour;
 
     /** @brief The depth clear value. */
     f32 depth;
     /** @brief The stencil clear value. */
     u32 stencil;
-
-    /** @brief The clear flags for this renderpass. */
-    u8 clear_flags;
 
     /** @brief Indicates if there is a previous renderpass. */
     b8 has_prev_pass;
@@ -182,16 +178,17 @@ typedef struct vulkan_swapchain {
     VkSwapchainKHR handle;
     /** @brief The number of swapchain images. */
     u32 image_count;
-    /** @brief An array of swapchain images. */
-    VkImage* images;
-    /** @brief An array of swapchain image views for the swapchain images. */
-    VkImageView* views;
+    /** @brief An array of pointers to render targets, which contain swapchain images. */
+    texture** render_textures;
 
-    /** @brief The depth image attachment. */
-    vulkan_image depth_attachment;
+    /** @brief The depth texture. */
+    texture* depth_texture;
 
-    /** @brief Framebuffers used for on-screen rendering, one per frame */
-    VkFramebuffer framebuffers[3];
+    /** 
+     * @brief Render targets used for on-screen rendering, one per frame. 
+     * The images contained in these are created and owned by the swapchain.
+     * */
+    render_target render_targets[3];
 } vulkan_swapchain;
 
 /**
@@ -332,7 +329,6 @@ typedef struct vulkan_shader_stage_config {
 typedef struct vulkan_descriptor_set_config {
     /** @brief The number of bindings in this set. */
     u8 binding_count;
-    
     /** @brief An array of binding layouts for this set. */
     VkDescriptorSetLayoutBinding bindings[VULKAN_SHADER_MAX_BINDINGS];
 } vulkan_descriptor_set_config;
@@ -341,13 +337,10 @@ typedef struct vulkan_descriptor_set_config {
 typedef struct vulkan_shader_config {
     /** @brief The number of shader stages in this shader. */
     u8 stage_count;
-    
     /** @brief  The configuration for every stage of this shader. */
     vulkan_shader_stage_config stages[VULKAN_SHADER_MAX_STAGES];
-    
     /** @brief An array of descriptor pool sizes. */
     VkDescriptorPoolSize pool_sizes[2];
-
     /**
      * @brief The max number of descriptor sets that can be allocated from this shader.
      * Should typically be a decently high number.
@@ -375,7 +368,6 @@ typedef struct vulkan_shader_config {
 typedef struct vulkan_descriptor_state {
     /** @brief The descriptor generation, per frame. */
     u8 generations[3];
-    
     /** @brief The identifier, per frame. Typically used for texture ids. */
     u32 ids[3];
 } vulkan_descriptor_state;
@@ -399,7 +391,6 @@ typedef struct vulkan_shader_descriptor_set_state {
 typedef struct vulkan_shader_instance_state {
     /** @brief The instance id. INVALID_ID if not used. */
     u32 id;
-    
     /** @brief The offset in bytes in the instance uniform buffer. */
     u64 offset;
 
@@ -407,7 +398,7 @@ typedef struct vulkan_shader_instance_state {
     vulkan_shader_descriptor_set_state descriptor_set_state;
 
     /**
-     * @brief Instance texture pointers, which are used during rendering. These
+     * @brief Instance texture map pointers, which are used during rendering. These
      * are set by calls to set_sampler.
      */
     struct texture_map** instance_texture_maps;
@@ -439,10 +430,8 @@ typedef struct vulkan_shader {
 
     /** @brief Descriptor set layouts, max of 2. Index 0=global, 1=instance. */
     VkDescriptorSetLayout descriptor_set_layouts[2];
-    
     /** @brief Global descriptor sets, one per frame. */
     VkDescriptorSet global_descriptor_sets[3];
-    
     /** @brief The uniform buffer used by this shader. */
     vulkan_buffer uniform_buffer;
 
@@ -454,6 +443,8 @@ typedef struct vulkan_shader {
     vulkan_shader_instance_state instance_states[VULKAN_MAX_MATERIAL_COUNT];
 
 } vulkan_shader;
+
+#define VULKAN_MAX_REGISTERED_RENDERPASSES 31
 
 /**
  * @brief The overall Vulkan context for the backend. Holds and maintains
@@ -477,10 +468,8 @@ typedef struct vulkan_context {
 
     /** @brief The handle to the internal Vulkan instance. */
     VkInstance instance;
-    
     /** @brief The internal Vulkan allocator. */
     VkAllocationCallbacks* allocator;
-    
     /** @brief The internal Vulkan surface for the window to be drawn to. */
     VkSurfaceKHR surface;
 
@@ -495,15 +484,14 @@ typedef struct vulkan_context {
     /** @brief The swapchain. */
     vulkan_swapchain swapchain;
 
-    /** @brief The main world renderpass. */
-    vulkan_renderpass main_renderpass;
+    void* renderpass_table_block;
+    hashtable renderpass_table;
 
-    /** @brief The UI renderpass. */
-    vulkan_renderpass ui_renderpass;
+    /** @brief Registered renderpasses. */
+    renderpass registered_passes[VULKAN_MAX_REGISTERED_RENDERPASSES];
 
     /** @brief The object vertex buffer, used to hold geometry vertices. */
     vulkan_buffer object_vertex_buffer;
-    
     /** @brief The object index buffer, used to hold geometry indices. */
     vulkan_buffer object_index_buffer;
 
@@ -518,7 +506,6 @@ typedef struct vulkan_context {
 
     /** @brief The current number of in-flight fences. */
     u32 in_flight_fence_count;
-    
     /** @brief The in-flight fences, used to indicate to the application when a frame is busy/ready. */
     VkFence in_flight_fences[2];
 
@@ -537,8 +524,8 @@ typedef struct vulkan_context {
     /** @brief The A collection of loaded geometries. @todo TODO: make dynamic */
     vulkan_geometry_data geometries[VULKAN_MAX_GEOMETRY_COUNT];
 
-    /** @brief Framebuffers used for world rendering. @note One per frame. */
-    VkFramebuffer world_framebuffers[3];
+    /** @brief Render targets used for world rendering. @note One per frame. */
+    render_target world_render_targets[3];
 
     /**
      * @brief A function pointer to find a memory index of the given type and with the given properties.
@@ -548,12 +535,10 @@ typedef struct vulkan_context {
      */
     i32 (*find_memory_index)(u32 type_filter, u32 property_flags);
 
-} vulkan_context;
+    /**
+     * @brief A pointer to a function to be called when the backend requires
+     * rendertargets to be refreshed/regenerated.
+     */
+    void (*on_rendertarget_refresh_required)();
 
-/**
- * @brief Represents Vulkan-specific texture data.
- */
-typedef struct vulkan_texture_data {
-    /** @brief The internal Vulkan image. */
-    vulkan_image image;
-} vulkan_texture_data;
+} vulkan_context;

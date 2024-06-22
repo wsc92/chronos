@@ -4,7 +4,8 @@
 #include "../../core/cmemory.h"
 #include "vulkan_device.h"
 #include "vulkan_image.h"
-#include <vulkan/vulkan_core.h>
+
+#include "../../systems/texture_system.h"
 
 void create(vulkan_context* context, u32 width, u32 height, vulkan_swapchain* swapchain);
 void destroy(vulkan_context* context, vulkan_swapchain* swapchain);
@@ -32,6 +33,9 @@ void vulkan_swapchain_destroy(
     vulkan_context* context,
     vulkan_swapchain* swapchain) {
     destroy(context, swapchain);
+    for (u32 i = 0; i < swapchain->image_count; ++i) {
+        cfree(swapchain->render_textures[i]->internal_data, sizeof(vulkan_image), MEMORY_TAG_TEXTURE);
+    }
 }
 
 b8 vulkan_swapchain_acquire_next_image_index(
@@ -41,7 +45,6 @@ b8 vulkan_swapchain_acquire_next_image_index(
     VkSemaphore image_available_semaphore,
     VkFence fence,
     u32* out_image_index) {
-
     VkResult result = vkAcquireNextImageKHR(
         context->device.logical_device,
         swapchain->handle,
@@ -69,7 +72,6 @@ void vulkan_swapchain_present(
     VkQueue present_queue,
     VkSemaphore render_complete_semaphore,
     u32 present_image_index) {
-
     // Return the image to the swapchain for presentation.
     VkPresentInfoKHR present_info = {VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
     present_info.waitSemaphoreCount = 1;
@@ -94,7 +96,6 @@ void vulkan_swapchain_present(
 
 void create(vulkan_context* context, u32 width, u32 height, vulkan_swapchain* swapchain) {
     VkExtent2D swapchain_extent = {width, height};
-    //swapchain->max_frames_in_flight = 2;
 
     // Choose a swap surface format.
     b8 found = false;
@@ -184,18 +185,51 @@ void create(vulkan_context* context, u32 width, u32 height, vulkan_swapchain* sw
     // Images
     swapchain->image_count = 0;
     VK_CHECK(vkGetSwapchainImagesKHR(context->device.logical_device, swapchain->handle, &swapchain->image_count, 0));
-    if (!swapchain->images) {
-        swapchain->images = (VkImage*)callocate(sizeof(VkImage) * swapchain->image_count, MEMORY_TAG_RENDERER);
+    if (!swapchain->render_textures) {
+        swapchain->render_textures = (texture**)callocate(sizeof(texture*) * swapchain->image_count, MEMORY_TAG_RENDERER);
+        // If creating the array, then the internal texture objects aren't created yet either.
+        for (u32 i = 0; i < swapchain->image_count; ++i) {
+            void* internal_data = callocate(sizeof(vulkan_image), MEMORY_TAG_TEXTURE);
+
+            char tex_name[38] = "__internal_vulkan_swapchain_image_0__";
+            tex_name[34] = '0' + (char)i;
+
+            swapchain->render_textures[i] = texture_system_wrap_internal(
+                tex_name,
+                swapchain_extent.width,
+                swapchain_extent.height,
+                4,
+                false,
+                true,
+                false,
+                internal_data);
+            if (!swapchain->render_textures[i]) {
+                CFATAL("Failed to generate new swapchain image texture!");
+                return;
+            }
+        }
+    } else {
+        for (u32 i = 0; i < swapchain->image_count; ++i) {
+            // Just update the dimensions.
+            texture_system_resize(swapchain->render_textures[i], swapchain_extent.width, swapchain_extent.height, false);
+        }
     }
-    if (!swapchain->views) {
-        swapchain->views = (VkImageView*)callocate(sizeof(VkImageView) * swapchain->image_count, MEMORY_TAG_RENDERER);
+    VkImage swapchain_images[32];
+    VK_CHECK(vkGetSwapchainImagesKHR(context->device.logical_device, swapchain->handle, &swapchain->image_count, swapchain_images));
+    for (u32 i = 0; i < swapchain->image_count; ++i) {
+        // Update the internal image for each.
+        vulkan_image* image = (vulkan_image*)swapchain->render_textures[i]->internal_data;
+        image->handle = swapchain_images[i];
+        image->width = swapchain_extent.width;
+        image->height = swapchain_extent.height;
     }
-    VK_CHECK(vkGetSwapchainImagesKHR(context->device.logical_device, swapchain->handle, &swapchain->image_count, swapchain->images));
 
     // Views
     for (u32 i = 0; i < swapchain->image_count; ++i) {
+        vulkan_image* image = (vulkan_image*)swapchain->render_textures[i]->internal_data;
+
         VkImageViewCreateInfo view_info = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
-        view_info.image = swapchain->images[i];
+        view_info.image = image->handle;
         view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
         view_info.format = swapchain->image_format.format;
         view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -204,7 +238,7 @@ void create(vulkan_context* context, u32 width, u32 height, vulkan_swapchain* sw
         view_info.subresourceRange.baseArrayLayer = 0;
         view_info.subresourceRange.layerCount = 1;
 
-        VK_CHECK(vkCreateImageView(context->device.logical_device, &view_info, context->allocator, &swapchain->views[i]));
+        VK_CHECK(vkCreateImageView(context->device.logical_device, &view_info, context->allocator, &image->view));
     }
 
     // Depth resources
@@ -214,6 +248,7 @@ void create(vulkan_context* context, u32 width, u32 height, vulkan_swapchain* sw
     }
 
     // Create depth image and its view.
+    vulkan_image* image = callocate(sizeof(texture), MEMORY_TAG_TEXTURE);
     vulkan_image_create(
         context,
         VK_IMAGE_TYPE_2D,
@@ -225,20 +260,33 @@ void create(vulkan_context* context, u32 width, u32 height, vulkan_swapchain* sw
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         true,
         VK_IMAGE_ASPECT_DEPTH_BIT,
-        &swapchain->depth_attachment);
+        image);
+
+    // Wrap it in a texture.
+    context->swapchain.depth_texture = texture_system_wrap_internal(
+        "__chronos_default_depth_texture__",
+        swapchain_extent.width,
+        swapchain_extent.height,
+        context->device.depth_channel_count,
+        false,
+        true,
+        false,
+        image);
 
     CINFO("Swapchain created successfully.");
 }
 
 void destroy(vulkan_context* context, vulkan_swapchain* swapchain) {
-
     vkDeviceWaitIdle(context->device.logical_device);
-    vulkan_image_destroy(context, &swapchain->depth_attachment);
+    vulkan_image_destroy(context, (vulkan_image*)swapchain->depth_texture->internal_data);
+    cfree(swapchain->depth_texture->internal_data, sizeof(vulkan_image), MEMORY_TAG_TEXTURE);
+    swapchain->depth_texture->internal_data = 0;
 
     // Only destroy the views, not the images, since those are owned by the swapchain and are thus
     // destroyed when it is.
     for (u32 i = 0; i < swapchain->image_count; ++i) {
-        vkDestroyImageView(context->device.logical_device, swapchain->views[i], context->allocator);
+        vulkan_image* image = (vulkan_image*)swapchain->render_textures[i]->internal_data;
+        vkDestroyImageView(context->device.logical_device, image->view, context->allocator);
     }
 
     vkDestroySwapchainKHR(context->device.logical_device, swapchain->handle, context->allocator);

@@ -44,7 +44,8 @@ b8 renderer_draw_frame(render_packet* packet);
  * @brief Sets the view matrix in the renderer. NOTE: exposed to public API.
  *
  * @deprecated HACK: this should not be exposed outside the engine.
-* @param view_position The view position to be set.
+ * @param view The view matrix to be set.
+ * @param view_position The view position to be set.
  */
 CAPI void renderer_set_view(mat4 view, vec3 view_position);
 
@@ -54,14 +55,42 @@ CAPI void renderer_set_view(mat4 view, vec3 view_position);
  * @param pixels The raw image data to be uploaded to the GPU.
  * @param texture A pointer to the texture to be loaded.
  */
-void renderer_create_texture(const u8* pixels, struct texture* texture);
+void renderer_texture_create(const u8* pixels, struct texture* texture);
 
 /**
  * @brief Destroys the given texture, releasing internal resources from the GPU.
  *
  * @param texture A pointer to the texture to be destroyed.
  */
-void renderer_destroy_texture(struct texture* texture);
+void renderer_texture_destroy(struct texture* texture);
+
+/**
+ * @brief Creates a new writeable texture with no data written to it.
+ *
+ * @param t A pointer to the texture to hold the resources.
+ */
+void renderer_texture_create_writeable(texture* t);
+
+/**
+ * @brief Resizes a texture. There is no check at this level to see if the
+ * texture is writeable. Internal resources are destroyed and re-created at
+ * the new resolution. Data is lost and would need to be reloaded.
+ * 
+ * @param t A pointer to the texture to be resized.
+ * @param new_width The new width in pixels.
+ * @param new_height The new height in pixels.
+ */
+void renderer_texture_resize(texture* t, u32 new_width, u32 new_height);
+
+/**
+ * @brief Writes the given data to the provided texture.
+ *
+ * @param t A pointer to the texture to be written to. NOTE: Must be a writeable texture.
+ * @param offset The offset in bytes from the beginning of the data to be written.
+ * @param size The number of bytes to be written.
+ * @param pixels The raw image data to be written.
+ */
+void renderer_texture_write_data(texture* t, u32 offset, u32 size, const u8* pixels);
 
 /**
  * @brief Acquiores GPU resources and uploads geometry data.
@@ -85,25 +114,24 @@ b8 renderer_create_geometry(geometry* geometry, u32 vertex_size, u32 vertex_coun
 void renderer_destroy_geometry(geometry* geometry);
 
 /**
- * @brief Obtains the identifier of the renderpass with the given name.
+ * @brief Obtains a pointer to the renderpass with the given name.
  *
  * @param name The name of the renderpass whose identifier to obtain.
- * @param out_renderpass_id A pointer to hold the renderpass id.
- * @return True if found; otherwise false.
+ * @return A pointer to a renderpass if found; otherwise 0.
  */
-b8 renderer_renderpass_id(const char* name, u8* out_renderpass_id);
+renderpass* renderer_renderpass_get(const char* name);
 
 /**
  * @brief Creates internal shader resources using the provided parameters.
  * 
  * @param s A pointer to the shader.
- * @param renderpass_id The identifier of the renderpass to be associated with the shader.
+ * @param pass A pointer to the renderpass to be associated with the shader.
  * @param stage_count The total number of stages.
  * @param stage_filenames An array of shader stage filenames to be loaded. Should align with stages array.
  * @param stages A array of shader_stages indicating what render stages (vertex, fragment, etc.) used in this shader.
  * @return b8 True on success; otherwise false.
  */
-b8 renderer_shader_create(struct shader* s, u8 renderpass_id, u8 stage_count, const char** stage_filenames, shader_stage* stages);
+b8 renderer_shader_create(struct shader* s, renderpass* pass, u8 stage_count, const char** stage_filenames, shader_stage* stages);
 
 /**
  * @brief Destroys the given shader and releases any resources held by it.
@@ -158,7 +186,7 @@ b8 renderer_shader_apply_globals(struct shader* s);
  * @brief Applies data for the currently bound instance.
  *
  * @param s A pointer to the shader to apply the instance data for.
- * @param needs_update Indicates if shader internals need an update, or if they should just be bound.
+ * @param needs_update Indicates if the shader uniforms need to be updated or just bound.
  * @return True on success; otherwise false.
  */
 b8 renderer_shader_apply_instance(struct shader* s, b8 needs_update);
@@ -206,3 +234,42 @@ b8 renderer_texture_map_acquire_resources(struct texture_map* map);
  * @param map A pointer to the texture map to release resources from.
  */
 void renderer_texture_map_release_resources(struct texture_map* map);
+
+/**
+ * @brief Creates a new render target using the provided data.
+ *
+ * @param attachment_count The number of attachments (texture pointers).
+ * @param attachments An array of attachments (texture pointers).
+ * @param renderpass A pointer to the renderpass the render target is associated with.
+ * @param width The width of the render target in pixels.
+ * @param height The height of the render target in pixels.
+ * @param out_target A pointer to hold the newly created render target.
+ */
+void renderer_render_target_create(u8 attachment_count, texture** attachments, renderpass* pass, u32 width, u32 height, render_target* out_target);
+
+/**
+ * @brief Destroys the provided render target.
+ *
+ * @param target A pointer to the render target to be destroyed.
+ * @param free_internal_memory Indicates if internal memory should be freed.
+ */
+void renderer_render_target_destroy(render_target* target, b8 free_internal_memory);
+
+/**
+ * @brief Creates a new renderpass.
+ *
+ * @param out_renderpass A pointer to the generic renderpass.
+ * @param depth The depth clear amount.
+ * @param stencil The stencil clear value.
+ * @param clear_flags The combined clear flags indicating what kind of clear should take place.
+ * @param has_prev_pass Indicates if there is a previous renderpass.
+ * @param has_next_pass Indicates if there is a next renderpass.
+ */
+void renderer_renderpass_create(renderpass* out_renderpass, f32 depth, u32 stencil, b8 has_prev_pass, b8 has_next_pass);
+
+/**
+ * @brief Destroys the given renderpass.
+ *
+ * @param pass A pointer to the renderpass to be destroyed.
+ */
+void renderer_renderpass_destroy(renderpass* pass);

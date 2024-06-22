@@ -1,14 +1,3 @@
-/**
- * @file renderer_backend.h
- * @author Travis Vroman (travis@kohiengine.com)
- * @brief Hosts creation and destruction methods for the renderer backend.
- * @version 1.0
- * @date 2022-01-11
- * 
- * @copyright Kohi Game Engine is Copyright (c) Travis Vroman 2021-2022
- * 
- */
-
 #pragma once
 
 #include "renderer_types.inl"
