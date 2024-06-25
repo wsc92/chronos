@@ -1,16 +1,3 @@
-/**
- * @file resource_system.h
- * @author Travis Vroman (travis@kohiengine.com)
- * @brief This file contains the implementation of the resource system.
- * The resource system is responsible for managing resources and their
- * loaders in the engine.
- * @version 1.0
- * @date 2022-01-11
- * 
- * @copyright Kohi Game Engine is Copyright (c) Travis Vroman 2021-2022
- * 
- */
-
 #pragma once
 
 #include "../resources/resource_types.h"

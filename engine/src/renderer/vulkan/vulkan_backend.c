@@ -253,7 +253,7 @@ b8 vulkan_renderer_backend_initialize(renderer_backend* backend, const renderer_
     app_info.apiVersion = VK_API_VERSION_1_2;
     app_info.pApplicationName = config->application_name;
     app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-    app_info.pEngineName = "Kohi Engine";
+    app_info.pEngineName = "Chronos Engine";
     app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
 
     VkInstanceCreateInfo create_info = {VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
@@ -262,12 +262,15 @@ b8 vulkan_renderer_backend_initialize(renderer_backend* backend, const renderer_
     // Obtain a list of required extensions
     const char** required_extensions = darray_create(const char*);
     darray_push(required_extensions, &VK_KHR_SURFACE_EXTENSION_NAME);  // Generic surface extension
+    // Generic surface extension
     platform_get_required_extension_names(&required_extensions);       // Platform-specific extension(s)
+    u32 required_extension_count = 0;
+    // Platform-specific extension(s)
 #if defined(_DEBUG)
     darray_push(required_extensions, &VK_EXT_DEBUG_UTILS_EXTENSION_NAME);  // debug utilities
 
     CDEBUG("Required extensions:");
-    u32 required_extension_count = darray_length(required_extensions);
+    required_extension_count = darray_length(required_extensions);
     for (u32 i = 0; i < required_extension_count; ++i) {
         CDEBUG(required_extensions[i]);
     }
@@ -346,6 +349,10 @@ b8 vulkan_renderer_backend_initialize(renderer_backend* backend, const renderer_
 
     create_info.enabledLayerCount = required_validation_layer_count;
     create_info.ppEnabledLayerNames = required_validation_layer_names;
+
+#if KPLATFORM_APPLE == 1
+    create_info.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+#endif
 
     VkResult instance_result = vkCreateInstance(&create_info, context.allocator, &context.instance);
     if (!vulkan_result_is_success(instance_result)) {

@@ -27,8 +27,8 @@ typedef enum keys {
     KEY_MODECHANGE = 0x1F,
 
     KEY_SPACE = 0x20,
-    KEY_PRIOR = 0x21,
-    KEY_NEXT = 0x22,
+    KEY_PAGEUP = 0x21,
+    KEY_PAGEDOWN = 0x22,
     KEY_END = 0x23,
     KEY_HOME = 0x24,
     KEY_LEFT = 0x25,
@@ -38,7 +38,7 @@ typedef enum keys {
     KEY_SELECT = 0x29,
     KEY_PRINT = 0x2A,
     KEY_EXECUTE = 0x2B,
-    KEY_SNAPSHOT = 0x2C,
+    KEY_PRINTSCREEN = 0x2C,
     KEY_INSERT = 0x2D,
     KEY_DELETE = 0x2E,
     KEY_HELP = 0x2F,
@@ -81,8 +81,8 @@ typedef enum keys {
     KEY_Y = 0x59,
     KEY_Z = 0x5A,
 
-    KEY_LWIN = 0x5B,
-    KEY_RWIN = 0x5C,
+    KEY_LSUPER = 0x5B,
+    KEY_RSUPER = 0x5C,
     KEY_APPS = 0x5D,
 
     KEY_SLEEP = 0x5F,
@@ -142,14 +142,20 @@ typedef enum keys {
     KEY_LALT = 0xA4,
     KEY_RALT = 0xA5,
 
-    KEY_SEMICOLON = 0xBA,
-    KEY_PLUS = 0xBB,
+    KEY_SEMICOLON = 0x3B,
+    KEY_APOSTROPHE = 0xDE,
+    KEY_QUOTE = KEY_APOSTROPHE,
+    KEY_EQUAL = 0xBB,
     KEY_COMMA = 0xBC,
     KEY_MINUS = 0xBD,
     KEY_PERIOD = 0xBE,
     KEY_SLASH = 0xBF,
 
     KEY_GRAVE = 0xC0,
+    KEY_LBRACKET = 0xDB,
+    KEY_PIPE = 0xDC,
+    KEY_BACKSLASH = KEY_PIPE,
+    KEY_RBRACKET = 0xDD,
     KEYS_MAX_KEYS
 } keys;
 
@@ -183,3 +189,10 @@ CAPI void input_get_previous_mouse_position(i32* x, i32* y);
 void input_process_button(buttons button, b8 pressed);
 void input_process_mouse_move(i16 x, i16 y);
 void input_process_mouse_wheel(i8 z_delta);
+/**
+ * @brief Returns a string representation of the provided key. Ex. "tab" for the tab key.
+ *
+ * @param key
+ * @return const char*
+ */
+CAPI const char* input_keycode_str(keys key);

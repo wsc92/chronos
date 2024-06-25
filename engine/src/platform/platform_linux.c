@@ -115,7 +115,7 @@ b8 platform_system_startup(
     u32 value_list[] = {state_ptr->screen->black_pixel, event_values};
 
     // Create the window
-    xcb_void_cookie_t cookie = xcb_create_window(
+    xcb_create_window(
         state_ptr->connection,
         XCB_COPY_FROM_PARENT,  // depth
         state_ptr->window,
@@ -605,9 +605,9 @@ keys translate_keycode(u32 x_keycode) {
         case XK_space:
             return KEY_SPACE;
         case XK_Prior:
-            return KEY_PRIOR;
+            return KEY_PAGEUP;
         case XK_Next:
-            return KEY_NEXT;
+            return KEY_PAGEDOWN;
         case XK_End:
             return KEY_END;
         case XK_Home:
@@ -635,9 +635,9 @@ keys translate_keycode(u32 x_keycode) {
             return KEY_HELP;
 
         case XK_Super_L:
-            return KEY_LWIN;  
+            return KEY_LSUPER;  
         case XK_Super_R:
-            return KEY_RWIN;
+            return KEY_RSUPER;
 
         // case XK_apps: return KEY_APPS; // not supported
 
@@ -748,7 +748,7 @@ keys translate_keycode(u32 x_keycode) {
         case XK_semicolon:
             return KEY_SEMICOLON;
         case XK_plus:
-            return KEY_PLUS;
+            return KEY_EQUAL;
         case XK_comma:
             return KEY_COMMA;
         case XK_minus:
