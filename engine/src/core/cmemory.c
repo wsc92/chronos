@@ -1,11 +1,12 @@
 #include "cmemory.h"
 
 #include "logger.h"
-#include "../platform/platform.h"
 #include "cstring.h"
-
+#include "cmutex.h"
+#include "../platform/platform.h"
 #include "../memory/dynamic_allocator.h"
 
+// TODO: Custom string lib
 #include <string.h>
 #include <stdio.h>
 
@@ -15,25 +16,32 @@ struct memory_stats {
 };
 
 static const char* memory_tag_strings[MEMORY_TAG_MAX_TAGS] = {
-    "UNKNOWN",
-    "ARRAY",
+    "UNKNOWN    ",
+    "ARRAY      ",
     "LINEAR_ALLC",
-    "DARRAY",
-    "DICT",
-    "RINGQUEUE",
-    "BST",
-    "STRING",
+    "DARRAY     ",
+    "DICT       ",
+    "RING_QUEUE ",
+    "BST        ",
+    "STRING     ",
     "APPLICATION",
-    "JOB",
-    "TEXTURE",
-    "MAT_INST",
-    "RENDERER",
-    "GAME",
-    "TRANSFORM",
-    "ENTITY",
+    "JOB        ",
+    "TEXTURE    ",
+    "MAT_INST   ",
+    "RENDERER   ",
+    "GAME       ",
+    "TRANSFORM  ",
+    "ENTITY     ",
     "ENTITY_NODE",
-    "SCENE",
-    "RESOURCE"};
+    "SCENE      ",
+    "RESOURCE   ",
+    "VULKAN     ",
+    "VULKAN_EXT ",
+    "DIRECT3D   ",
+    "OPENGL     ",
+    "GPU_LOCAL  ",
+    "BITMAP_FONT",
+    "SYSTEM_FONT"};
 
 typedef struct memory_system_state {
     memory_system_configuration config;
@@ -42,8 +50,11 @@ typedef struct memory_system_state {
     u64 allocator_memory_requirement;
     dynamic_allocator allocator;
     void* allocator_block;
+    // A mutex for allocations/frees
+    cmutex allocation_mutex;
 } memory_system_state;
 
+// Pointer to system state.
 static memory_system_state* state_ptr;
 
 b8 memory_system_initialize(memory_system_configuration config) {
@@ -80,12 +91,21 @@ b8 memory_system_initialize(memory_system_configuration config) {
         return false;
     }
 
+    // Create allocation mutex
+    if (!cmutex_create(&state_ptr->allocation_mutex)) {
+        CFATAL("Unable to create allocation mutex!");
+        return false;
+    }
+
     CDEBUG("Memory system successfully allocated %llu bytes.", config.total_alloc_size);
     return true;
 }
 
 void memory_system_shutdown() {
     if (state_ptr) {
+        // Destroy allocation mutex
+        cmutex_destroy(&state_ptr->allocation_mutex);
+
         dynamic_allocator_destroy(&state_ptr->allocator);
         // Free the entire block.
         platform_free(state_ptr, state_ptr->allocator_memory_requirement + sizeof(memory_system_state));
@@ -94,22 +114,33 @@ void memory_system_shutdown() {
 }
 
 void* callocate(u64 size, memory_tag tag) {
+    return callocate_aligned(size, 1, tag);
+}
+
+void* callocate_aligned(u64 size, u16 alignment, memory_tag tag) {
     if (tag == MEMORY_TAG_UNKNOWN) {
-        CWARN("callocate called using MEMORY_TAG_UNKNOWN. Re-class this allocation.");
+        CWARN("callocate_aligned called using MEMORY_TAG_UNKNOWN. Re-class this allocation.");
     }
 
     // Either allocate from the system's allocator or the OS. The latter shouldn't ever
     // really happen.
     void* block = 0;
     if (state_ptr) {
+        // Make sure multithreaded requests don't trample each other.
+        if (!cmutex_lock(&state_ptr->allocation_mutex)) {
+            CFATAL("Error obtaining mutex lock during allocation.");
+            return 0;
+        }
+
         state_ptr->stats.total_allocated += size;
         state_ptr->stats.tagged_allocations[tag] += size;
         state_ptr->alloc_count++;
 
-        block = dynamic_allocator_allocate(&state_ptr->allocator, size);
+        block = dynamic_allocator_allocate_aligned(&state_ptr->allocator, size, alignment);
+        cmutex_unlock(&state_ptr->allocation_mutex);
     } else {
         // If the system is not up yet, warn about it but give memory for now.
-        CWARN("callocate called before the memory system is initialized.");
+        CWARN("callocate_aligned called before the memory system is initialized.");
         // TODO: Memory alignment
         block = platform_allocate(size, false);
     }
@@ -119,18 +150,43 @@ void* callocate(u64 size, memory_tag tag) {
         return block;
     }
 
-    CFATAL("callocate failed to allocate successfully.");
+    CFATAL("callocate_aligned failed to allocate successfully.");
     return 0;
 }
 
+void callocate_report(u64 size, memory_tag tag) {
+    // Make sure multithreaded requests don't trample each other.
+    if (!cmutex_lock(&state_ptr->allocation_mutex)) {
+        CFATAL("Error obtaining mutex lock during allocation reporting.");
+        return;
+    }
+    state_ptr->stats.total_allocated += size;
+    state_ptr->stats.tagged_allocations[tag] += size;
+    state_ptr->alloc_count++;
+    cmutex_unlock(&state_ptr->allocation_mutex);
+}
+
 void cfree(void* block, u64 size, memory_tag tag) {
+    cfree_aligned(block, size, 1, tag);
+}
+
+void cfree_aligned(void* block, u64 size, u16 alignment, memory_tag tag) {
     if (tag == MEMORY_TAG_UNKNOWN) {
-        CWARN("cfree called using MEMORY_TAG_UNKNOWN. Re-class this allocation.");
+        CWARN("cfree_aligned called using MEMORY_TAG_UNKNOWN. Re-class this allocation.");
     }
     if (state_ptr) {
+        // Make sure multithreaded requests don't trample each other.
+        if (!cmutex_lock(&state_ptr->allocation_mutex)) {
+            CFATAL("Unable to obtain mutex lock for free operation. Heap corruption is likely.");
+            return;
+        }
+
         state_ptr->stats.total_allocated -= size;
         state_ptr->stats.tagged_allocations[tag] -= size;
-        b8 result = dynamic_allocator_free(&state_ptr->allocator, block, size);
+        state_ptr->alloc_count--;
+        b8 result = dynamic_allocator_free_aligned(&state_ptr->allocator, block);
+
+        cmutex_unlock(&state_ptr->allocation_mutex);
 
         // If the free failed, it's possible this is because the allocation was made
         // before this system was started up. Since this absolutely should be an exception
@@ -146,6 +202,21 @@ void cfree(void* block, u64 size, memory_tag tag) {
     }
 }
 
+void cfree_report(u64 size, memory_tag tag) {
+    // Make sure multithreaded requests don't trample each other.
+    if (!cmutex_lock(&state_ptr->allocation_mutex)) {
+        CFATAL("Error obtaining mutex lock during allocation reporting.");
+        return;
+    }
+    state_ptr->stats.total_allocated -= size;
+    state_ptr->stats.tagged_allocations[tag] -= size;
+    state_ptr->alloc_count--;
+    cmutex_unlock(&state_ptr->allocation_mutex);
+}
+
+b8 cmemory_get_size_alignment(void* block, u64* out_size, u16* out_alignment) {
+    return dynamic_allocator_get_size_alignment(block, out_size, out_alignment);
+}
 
 void* czero_memory(void* block, u64 size) {
     return platform_zero_memory(block, size);
@@ -159,39 +230,51 @@ void* cset_memory(void* dest, i32 value, u64 size) {
     return platform_set_memory(dest, value, size);
 }
 
-char* get_memory_usage_str() {
-    const u64 gib = 1024 * 1024 * 1024;
-    const u64 mib = 1024 * 1024;
-    const u64 kib = 1024;
+const char* get_unit_for_size(u64 size_bytes, f32* out_amount) {
+    if (size_bytes >= GIBIBYTES(1)) {
+        *out_amount = (f64)size_bytes / GIBIBYTES(1);
+        return "GiB";
+    } else if (size_bytes >= MEBIBYTES(1)) {
+        *out_amount = (f64)size_bytes / MEBIBYTES(1);
+        return "MiB";
+    } else if (size_bytes >= KIBIBYTES(1)) {
+        *out_amount = (f64)size_bytes / KIBIBYTES(1);
+        return "KiB";
+    } else {
+        *out_amount = (f32)size_bytes;
+        return "B";
+    }
+}
 
+char* get_memory_usage_str() {
     char buffer[8000] = "System memory use (tagged):\n";
     u64 offset = strlen(buffer);
     for (u32 i = 0; i < MEMORY_TAG_MAX_TAGS; ++i) {
-        char unit[4] = "XiB";
-        float amount = 1.0f;
-        if (state_ptr->stats.tagged_allocations[i] >= gib) {
-            unit[0] = 'G';
-            amount = state_ptr->stats.tagged_allocations[i] / (float)gib;
-        } 
-        else if (state_ptr->stats.tagged_allocations[i] >= mib) {
-            unit[0] = 'M';
-            amount = state_ptr->stats.tagged_allocations[i] / (float)mib;
-        } 
-        else if (state_ptr->stats.tagged_allocations[i] >= kib) {
-            unit[0] = 'K';
-            amount = state_ptr->stats.tagged_allocations[i] / (float)kib;
-        } 
-        else {
-            unit[0] = 'B';
-            unit[1] = 0;
-            amount = (float)state_ptr->stats.tagged_allocations[i];
-        } 
+        f32 amount = 1.0f;
+        const char* unit = get_unit_for_size(state_ptr->stats.tagged_allocations[i], &amount);
 
         i32 length = snprintf(buffer + offset, 8000, "  %s: %.2f%s\n", memory_tag_strings[i], amount, unit);
         offset += length;
     }
-    char* out_string = string_duplicate(buffer);
+    {
+        // Compute total usage.
+        u64 total_space = dynamic_allocator_total_space(&state_ptr->allocator);
+        u64 free_space = dynamic_allocator_free_space(&state_ptr->allocator);
+        u64 used_space = total_space - free_space;
 
+        f32 used_amount = 1.0f;
+        const char* used_unit = get_unit_for_size(used_space, &used_amount);
+
+        f32 total_amount = 1.0f;
+        const char* total_unit = get_unit_for_size(total_space, &total_amount);
+
+        f64 percent_used = (f64)(used_space) / total_space;
+
+        i32 length = snprintf(buffer + offset, 8000, "Total memory usage: %.2f%s of %.2f%s (%.2f%%)\n", used_amount, used_unit, total_amount, total_unit, percent_used);
+        offset += length;
+    }
+
+    char* out_string = string_duplicate(buffer);
     return out_string;
 }
 

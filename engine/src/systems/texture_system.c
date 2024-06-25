@@ -8,6 +8,7 @@
 #include "../renderer/renderer_frontend.h"
 
 #include "../systems/resource_system.h"
+#include "../systems/job_system.h"
 
 typedef struct texture_system_state {
     texture_system_config config;
@@ -28,6 +29,15 @@ typedef struct texture_reference {
     u32 handle;
     b8 auto_release;
 } texture_reference;
+
+// Also used as result_data from job.
+typedef struct texture_load_params {
+    char* resource_name;
+    texture* out_texture;
+    texture temp_texture;
+    u32 current_generation;
+    resource image_resource;
+} texture_load_params;
 
 static texture_system_state* state_ptr = 0;
 
@@ -189,7 +199,7 @@ texture* texture_system_wrap_internal(const char* name, u32 width, u32 height, u
         t = &state_ptr->registered_textures[id];
     } else {
         t = callocate(sizeof(texture), MEMORY_TAG_TEXTURE);
-        CTRACE("texture_system_wrap_internal created texture '%s', but not registering, resulting in an allocation. It is up to the caller to free this memory.", name);
+        // KTRACE("texture_system_wrap_internal created texture '%s', but not registering, resulting in an allocation. It is up to the caller to free this memory.", name);
     }
 
     t->id = id;
@@ -264,7 +274,7 @@ texture* texture_system_get_default_normal_texture() {
 b8 create_default_textures(texture_system_state* state) {
     // NOTE: Create default texture, a 256x256 blue/white checkerboard pattern.
     // This is done in code to eliminate asset dependencies.
-    CTRACE("Creating default texture...");
+    // KTRACE("Creating default texture...");
     const u32 tex_dimension = 256;
     const u32 channels = 4;
     const u32 pixel_count = tex_dimension * tex_dimension;
@@ -302,7 +312,7 @@ b8 create_default_textures(texture_system_state* state) {
     state->default_texture.generation = INVALID_ID;
 
     // Diffuse texture.
-    CTRACE("Creating default diffuse texture...");
+    // KTRACE("Creating default diffuse texture...");
     u8 diff_pixels[16 * 16 * 4];
     // Default diffuse map is all white.
     cset_memory(diff_pixels, 255, sizeof(u8) * 16 * 16 * 4);
@@ -318,7 +328,7 @@ b8 create_default_textures(texture_system_state* state) {
     state->default_diffuse_texture.generation = INVALID_ID;
 
     // Specular texture.
-    CTRACE("Creating default specular texture...");
+    // KTRACE("Creating default specular texture...");
     u8 spec_pixels[16 * 16 * 4];
     // Default spec map is black (no specular)
     cset_memory(spec_pixels, 0, sizeof(u8) * 16 * 16 * 4);
@@ -334,7 +344,7 @@ b8 create_default_textures(texture_system_state* state) {
     state->default_specular_texture.generation = INVALID_ID;
 
     // Normal texture.
-    CTRACE("Creating default normal texture...");
+    // KTRACE("Creating default normal texture...");
     u8 normal_pixels[16 * 16 * 4];  // w * h * channels
     cset_memory(normal_pixels, 0, sizeof(u8) * 16 * 16 * 4);
 
@@ -427,30 +437,72 @@ b8 load_cube_textures(const char* name, const char texture_names[6][TEXTURE_NAME
     return true;
 }
 
-b8 load_texture(const char* texture_name, texture* t) {
-    image_resource_params params;
-    params.flip_y = true;
-    resource img_resource;
-    if (!resource_system_load(texture_name, RESOURCE_TYPE_IMAGE, &params, &img_resource)) {
-        CERROR("Failed to load image resource for texture '%s'", texture_name);
-        return false;
+void texture_load_job_success(void* params) {
+    texture_load_params* texture_params = (texture_load_params*)params;
+
+    // This also handles the GPU upload. Can't be jobified until the renderer is multithreaded.
+    image_resource_data* resource_data = (image_resource_data*)texture_params->image_resource.data;
+
+    // Acquire internal texture resources and upload to GPU. Can't be jobified until the renderer is multithreaded.
+    renderer_texture_create(resource_data->pixels, &texture_params->temp_texture);
+
+    // Take a copy of the old texture.
+    texture old = *texture_params->out_texture;
+
+    // Assign the temp texture to the pointer.
+    *texture_params->out_texture = texture_params->temp_texture;
+
+    // Destroy the old texture.
+    renderer_texture_destroy(&old);
+    czero_memory(&old, sizeof(texture));
+
+    if (texture_params->current_generation == INVALID_ID) {
+        texture_params->out_texture->generation = 0;
+    } else {
+        texture_params->out_texture->generation = texture_params->current_generation + 1;
     }
 
-    image_resource_data* resource_data = img_resource.data;
+    CTRACE("Successfully loaded texture '%s'.", texture_params->resource_name);
+
+    // Clean up data.
+    resource_system_unload(&texture_params->image_resource);
+    if (texture_params->resource_name) {
+        u32 length = string_length(texture_params->resource_name);
+        cfree(texture_params->resource_name, sizeof(char) * length + 1, MEMORY_TAG_STRING);
+        texture_params->resource_name = 0;
+    }
+}
+
+void texture_load_job_fail(void* params) {
+    texture_load_params* texture_params = (texture_load_params*)params;
+
+    CERROR("Failed to load texture '%s'.", texture_params->resource_name);
+
+    resource_system_unload(&texture_params->image_resource);
+}
+
+b8 texture_load_job_start(void* params, void* result_data) {
+    texture_load_params* load_params = (texture_load_params*)params;
+
+    image_resource_params resource_params;
+    resource_params.flip_y = true;
+
+    b8 result = resource_system_load(load_params->resource_name, RESOURCE_TYPE_IMAGE, &resource_params, &load_params->image_resource);
+
+    image_resource_data* resource_data = load_params->image_resource.data;
 
     // Use a temporary texture to load into.
-    texture temp_texture;
-    temp_texture.width = resource_data->width;
-    temp_texture.height = resource_data->height;
-    temp_texture.channel_count = resource_data->channel_count;
+    load_params->temp_texture.width = resource_data->width;
+    load_params->temp_texture.height = resource_data->height;
+    load_params->temp_texture.channel_count = resource_data->channel_count;
 
-    u32 current_generation = t->generation;
-    t->generation = INVALID_ID;
+    load_params->current_generation = load_params->out_texture->generation;
+    load_params->out_texture->generation = INVALID_ID;
 
-    u64 total_size = temp_texture.width * temp_texture.height * temp_texture.channel_count;
+    u64 total_size = load_params->temp_texture.width * load_params->temp_texture.height * load_params->temp_texture.channel_count;
     // Check for transparency
     b32 has_transparency = false;
-    for (u64 i = 0; i < total_size; i += temp_texture.channel_count) {
+    for (u64 i = 0; i < total_size; i += load_params->temp_texture.channel_count) {
         u8 a = resource_data->pixels[i + 3];
         if (a < 255) {
             has_transparency = true;
@@ -459,30 +511,28 @@ b8 load_texture(const char* texture_name, texture* t) {
     }
 
     // Take a copy of the name.
-    string_ncopy(temp_texture.name, texture_name, TEXTURE_NAME_MAX_LENGTH);
-    temp_texture.generation = INVALID_ID;
-    temp_texture.flags = has_transparency ? TEXTURE_FLAG_HAS_TRANSPARENCY : 0;
+    string_ncopy(load_params->temp_texture.name, load_params->resource_name, TEXTURE_NAME_MAX_LENGTH);
+    load_params->temp_texture.generation = INVALID_ID;
+    load_params->temp_texture.flags |= has_transparency ? TEXTURE_FLAG_HAS_TRANSPARENCY : 0;
 
-    // Acquire internal texture resources and upload to GPU.
-    renderer_texture_create(resource_data->pixels, &temp_texture);
+    // NOTE: The load params are also used as the result data here, only the image_resource field is populated now.
+    ccopy_memory(result_data, load_params, sizeof(texture_load_params));
 
-    // Take a copy of the old texture.
-    texture old = *t;
+    return result;
+}
 
-    // Assign the temp texture to the pointer.
-    *t = temp_texture;
+b8 load_texture(const char* texture_name, texture* t) {
+    // Kick off a texture loading job. Only handles loading from disk
+    // to CPU. GPU upload is handled after completion of this job.
+    texture_load_params params;
+    params.resource_name = string_duplicate(texture_name);
+    params.out_texture = t;
+    params.image_resource = (resource){};
+    params.current_generation = t->generation;
+    params.temp_texture = (texture){};
 
-    // Destroy the old texture.
-    renderer_texture_destroy(&old);
-
-    if (current_generation == INVALID_ID) {
-        t->generation = 0;
-    } else {
-        t->generation = current_generation + 1;
-    }
-
-    // Clean up data.
-    resource_system_unload(&img_resource);
+    job_info job = job_create(texture_load_job_start, texture_load_job_success, texture_load_job_fail, &params, sizeof(texture_load_params), sizeof(texture_load_params));
+    job_system_submit(job);
     return true;
 }
 
@@ -540,9 +590,9 @@ b8 process_texture_reference(const char* name, texture_type type, i8 reference_d
                     // Reset the reference.
                     ref.handle = INVALID_ID;
                     ref.auto_release = false;
-                    CTRACE("Released texture '%s'., Texture unloaded because reference count=0 and auto_release=true.", name_copy);
+                    // KTRACE("Released texture '%s'., Texture unloaded because reference count=0 and auto_release=true.", name_copy);
                 } else {
-                    CTRACE("Released texture '%s', now has a reference count of '%i' (auto_release=%s).", name_copy, ref.reference_count, ref.auto_release ? "true" : "false");
+                    // KTRACE("Released texture '%s', now has a reference count of '%i' (auto_release=%s).", name_copy, ref.reference_count, ref.auto_release ? "true" : "false");
                 }
 
             } else {
@@ -569,7 +619,7 @@ b8 process_texture_reference(const char* name, texture_type type, i8 reference_d
                         t->type = type;
                         // Create new texture.
                         if (skip_load) {
-                            CTRACE("Load skipped for texture '%s'. This is expected behaviour.");
+                            // KTRACE("Load skipped for texture '%s'. This is expected behaviour.");
                         } else {
                             if (type == TEXTURE_TYPE_CUBE) {
                                 char texture_names[6][TEXTURE_NAME_MAX_LENGTH];
@@ -596,11 +646,11 @@ b8 process_texture_reference(const char* name, texture_type type, i8 reference_d
                             }
                             t->id = ref.handle;
                         }
-                        CTRACE("Texture '%s' does not yet exist. Created, and ref_count is now %i.", name, ref.reference_count);
+                        // CTRACE("Texture '%s' does not yet exist. Created, and ref_count is now %i.", name, ref.reference_count);
                     }
                 } else {
                     *out_texture_id = ref.handle;
-                    CTRACE("Texture '%s' already exists, ref_count increased to %i.", name, ref.reference_count);
+                    // CTRACE("Texture '%s' already exists, ref_count increased to %i.", name, ref.reference_count);
                 }
             }
 

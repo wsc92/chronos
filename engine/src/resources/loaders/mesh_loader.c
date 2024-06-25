@@ -17,7 +17,7 @@
 
 typedef enum mesh_file_type {
     MESH_FILE_TYPE_NOT_FOUND,
-    MESH_FILE_TYPE_KSM,
+    MESH_FILE_TYPE_CSM,
     MESH_FILE_TYPE_OBJ
 } mesh_file_type;
 
@@ -42,12 +42,12 @@ typedef struct mesh_group_data {
     mesh_face_data* faces;
 } mesh_group_data;
 
-b8 import_obj_file(file_handle* obj_file, const char* out_ksm_filename, geometry_config** out_geometries_darray);
+b8 import_obj_file(file_handle* obj_file, const char* out_csm_filename, geometry_config** out_geometries_darray);
 void process_subobject(vec3* positions, vec3* normals, vec2* tex_coords, mesh_face_data* faces, geometry_config* out_data);
 b8 import_obj_material_library_file(const char* mtl_file_path);
 
-b8 load_ksm_file(file_handle* ksm_file, geometry_config** out_geometries_darray);
-b8 write_ksm_file(const char* path, const char* name, u32 geometry_count, geometry_config* geometries);
+b8 load_csm_file(file_handle* csm_file, geometry_config** out_geometries_darray);
+b8 write_csm_file(const char* path, const char* name, u32 geometry_count, geometry_config* geometries);
 b8 write_cmt_file(const char* directory, material_config* config);
 
 b8 mesh_loader_load(struct resource_loader* self, const char* name, void* params, resource* out_resource) {
@@ -65,7 +65,7 @@ b8 mesh_loader_load(struct resource_loader* self, const char* name, void* params
     // binary versions) for debug purposes.
 #define SUPPORTED_FILETYPE_COUNT 2
     supported_mesh_filetype supported_filetypes[SUPPORTED_FILETYPE_COUNT];
-    supported_filetypes[0] = (supported_mesh_filetype){".ksm", MESH_FILE_TYPE_KSM, true};
+    supported_filetypes[0] = (supported_mesh_filetype){".csm", MESH_FILE_TYPE_CSM, true};
     supported_filetypes[1] = (supported_mesh_filetype){".obj", MESH_FILE_TYPE_OBJ, false};
 
     char full_file_path[512];
@@ -95,14 +95,14 @@ b8 mesh_loader_load(struct resource_loader* self, const char* name, void* params
     b8 result = false;
     switch (type) {
         case MESH_FILE_TYPE_OBJ: {
-            // Generate the ksm filename.
-            char ksm_file_name[512];
-            string_format(ksm_file_name, "%s/%s/%s%s", resource_system_base_path(), self->type_path, name, ".ksm");
-            result = import_obj_file(&f, ksm_file_name, &resource_data);
+            // Generate the csm filename.
+            char csm_file_name[512];
+            string_format(csm_file_name, "%s/%s/%s%s", resource_system_base_path(), self->type_path, name, ".csm");
+            result = import_obj_file(&f, csm_file_name, &resource_data);
             break;
         }
-        case MESH_FILE_TYPE_KSM:
-            result = load_ksm_file(&f, &resource_data);
+        case MESH_FILE_TYPE_CSM:
+            result = load_csm_file(&f, &resource_data);
             break;
         default:
         case MESH_FILE_TYPE_NOT_FOUND:
@@ -139,73 +139,73 @@ void mesh_loader_unload(struct resource_loader* self, resource* resource) {
     resource->data_size = 0;
 }
 
-b8 load_ksm_file(file_handle* ksm_file, geometry_config** out_geometries_darray) {
+b8 load_csm_file(file_handle* csm_file, geometry_config** out_geometries_darray) {
     // Version
     u64 bytes_read = 0;
     u16 version = 0;
-    filesystem_read(ksm_file, sizeof(u16), &version, &bytes_read);
+    filesystem_read(csm_file, sizeof(u16), &version, &bytes_read);
 
     // Name length
     u32 name_length = 0;
-    filesystem_read(ksm_file, sizeof(u32), &name_length, &bytes_read);
+    filesystem_read(csm_file, sizeof(u32), &name_length, &bytes_read);
     // Name + terminator
     char name[256];
-    filesystem_read(ksm_file, sizeof(char) * name_length, name, &bytes_read);
+    filesystem_read(csm_file, sizeof(char) * name_length, name, &bytes_read);
 
     // Geometry count
     u32 geometry_count = 0;
-    filesystem_read(ksm_file, sizeof(u32), &geometry_count, &bytes_read);
+    filesystem_read(csm_file, sizeof(u32), &geometry_count, &bytes_read);
 
     // Each geometry
     for (u32 i = 0; i < geometry_count; ++i) {
         geometry_config g = {};
 
         // Vertices (size/count/array)
-        filesystem_read(ksm_file, sizeof(u32), &g.vertex_size, &bytes_read);
-        filesystem_read(ksm_file, sizeof(u32), &g.vertex_count, &bytes_read);
+        filesystem_read(csm_file, sizeof(u32), &g.vertex_size, &bytes_read);
+        filesystem_read(csm_file, sizeof(u32), &g.vertex_count, &bytes_read);
         g.vertices = callocate(g.vertex_size * g.vertex_count, MEMORY_TAG_ARRAY);
-        filesystem_read(ksm_file, g.vertex_size * g.vertex_count, g.vertices, &bytes_read);
+        filesystem_read(csm_file, g.vertex_size * g.vertex_count, g.vertices, &bytes_read);
 
         // Indices (size/count/array)
-        filesystem_read(ksm_file, sizeof(u32), &g.index_size, &bytes_read);
-        filesystem_read(ksm_file, sizeof(u32), &g.index_count, &bytes_read);
+        filesystem_read(csm_file, sizeof(u32), &g.index_size, &bytes_read);
+        filesystem_read(csm_file, sizeof(u32), &g.index_count, &bytes_read);
         g.indices = callocate(g.index_size * g.index_count, MEMORY_TAG_ARRAY);
-        filesystem_read(ksm_file, g.index_size * g.index_count, g.indices, &bytes_read);
+        filesystem_read(csm_file, g.index_size * g.index_count, g.indices, &bytes_read);
 
         // Name
         u32 g_name_length = 0;
-        filesystem_read(ksm_file, sizeof(u32), &g_name_length, &bytes_read);
-        filesystem_read(ksm_file, sizeof(char) * g_name_length, g.name, &bytes_read);
+        filesystem_read(csm_file, sizeof(u32), &g_name_length, &bytes_read);
+        filesystem_read(csm_file, sizeof(char) * g_name_length, g.name, &bytes_read);
 
         // Material Name
         u32 m_name_length = 0;
-        filesystem_read(ksm_file, sizeof(u32), &m_name_length, &bytes_read);
-        filesystem_read(ksm_file, sizeof(char) * m_name_length, g.material_name, &bytes_read);
+        filesystem_read(csm_file, sizeof(u32), &m_name_length, &bytes_read);
+        filesystem_read(csm_file, sizeof(char) * m_name_length, g.material_name, &bytes_read);
 
         // Center
-        filesystem_read(ksm_file, sizeof(vertex_3d), &g.center, &bytes_read);
+        filesystem_read(csm_file, sizeof(vertex_3d), &g.center, &bytes_read);
 
         // Extents (min/max)
-        filesystem_read(ksm_file, sizeof(vertex_3d), &g.min_extents, &bytes_read);
-        filesystem_read(ksm_file, sizeof(vertex_3d), &g.max_extents, &bytes_read);
+        filesystem_read(csm_file, sizeof(vertex_3d), &g.min_extents, &bytes_read);
+        filesystem_read(csm_file, sizeof(vertex_3d), &g.max_extents, &bytes_read);
 
         // Add to the output array.
         darray_push(*out_geometries_darray, g);
     }
 
-    filesystem_close(ksm_file);
+    filesystem_close(csm_file);
 
     return true;
 }
 
-b8 write_ksm_file(const char* path, const char* name, u32 geometry_count, geometry_config* geometries) {
+b8 write_csm_file(const char* path, const char* name, u32 geometry_count, geometry_config* geometries) {
     if (filesystem_exists(path)) {
         CINFO("File '%s' already exists and will be overwritten.", path);
     }
 
     file_handle f;
     if (!filesystem_open(path, FILE_MODE_WRITE, true, &f)) {
-        CERROR("Unable to open file '%s' for writing. KSM write failed.", path);
+        CERROR("Unable to open file '%s' for writing. CSM write failed.", path);
         return false;
     }
 
@@ -262,14 +262,14 @@ b8 write_ksm_file(const char* path, const char* name, u32 geometry_count, geomet
 
 /**
  * @brief Imports an obj file. This reads the obj, creates geometry configs, then calls logic to write
- * those geometries out to a binary ksm file. That file can be used on the next load.
+ * those geometries out to a binary csm file. That file can be used on the next load.
  *
  * @param obj_file A pointer to the obj file handle to be read.
- * @param out_ksm_filename The path to the ksm file to be written to.
+ * @param out_csm_filename The path to the csm file to be written to.
  * @param out_geometries_darray A darray of geometries parsed from the file.
  * @return True on success; otherwise false.
  */
-b8 import_obj_file(file_handle* obj_file, const char* out_ksm_filename, geometry_config** out_geometries_darray) {
+b8 import_obj_file(file_handle* obj_file, const char* out_csm_filename, geometry_config** out_geometries_darray) {
     // Positions
     vec3* positions = darray_reserve(vec3, 16384);
 
@@ -285,6 +285,7 @@ b8 import_obj_file(file_handle* obj_file, const char* out_ksm_filename, geometry
     char material_file_name[512] = "";
 
     char name[512];
+    czero_memory(name, sizeof(char) * 512);
     u8 current_mat_name_count = 0;
     char material_names[32][64];
 
@@ -494,7 +495,8 @@ b8 import_obj_file(file_handle* obj_file, const char* out_ksm_filename, geometry
     if (string_length(material_file_name) > 0) {
         // Load up the material file
         char full_mtl_path[512];
-        string_directory_from_path(full_mtl_path, out_ksm_filename);
+        czero_memory(full_mtl_path, sizeof(char) * 512);
+        string_directory_from_path(full_mtl_path, out_csm_filename);
         string_append_string(full_mtl_path, full_mtl_path, material_file_name);
 
         // Process material library file.
@@ -532,8 +534,8 @@ b8 import_obj_file(file_handle* obj_file, const char* out_ksm_filename, geometry
         geometry_generate_tangents(g->vertex_count, g->vertices, g->index_count, g->indices);
     }
 
-    // Output a ksm file, which will be loaded in the future.
-    return write_ksm_file(out_ksm_filename, name, count, *out_geometries_darray);
+    // Output a csm file, which will be loaded in the future.
+    return write_csm_file(out_csm_filename, name, count, *out_geometries_darray);
 }
 
 void process_subobject(vec3* positions, vec3* normals, vec2* tex_coords, mesh_face_data* faces, geometry_config* out_data) {
