@@ -13,6 +13,7 @@ typedef enum ui_text_type {
 
 typedef struct ui_text {
     ui_text_type type;
+    u32 unique_id;
     struct font_data* data;
     renderbuffer vertex_buffer;
     renderbuffer index_buffer;
