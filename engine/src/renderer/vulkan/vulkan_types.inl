@@ -160,11 +160,15 @@ typedef struct vulkan_renderpass {
 typedef struct vulkan_swapchain {
     /** @brief The swapchain image format. */
     VkSurfaceFormatKHR image_format;
+
     /**
      * @brief The maximum number of "images in flight" (images simultaneously being rendered to).
      * Typically one less than the total number of images available.
      */
     u8 max_frames_in_flight;
+
+    /** @brief Indicates various flags used for swapchain instantiation. */
+    renderer_config_flags flags;
 
     /** @brief The swapchain internal handle. */
     VkSwapchainKHR handle;
@@ -562,6 +566,8 @@ typedef struct vulkan_context {
 
     /** @brief Indicates if the swapchain is currently being recreated. */
     b8 recreating_swapchain;
+
+    b8 render_flag_changed;
 
     /** @brief The A collection of loaded geometries. @todo TODO: make dynamic */
     vulkan_geometry_data geometries[VULKAN_MAX_GEOMETRY_COUNT];

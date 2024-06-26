@@ -24,14 +24,14 @@ typedef enum resource_type {
     RESOURCE_TYPE_CUSTOM
 } resource_type;
 
-/** @brief A magic number indicating the file as a kohi binary file. */
+/** @brief A magic number indicating the file as a chronos binary file. */
 #define RESOURCE_MAGIC 0xcafebabe
 
 /**
  * @brief The header data for binary resource types.
  */
 typedef struct resource_header {
-    /** @brief A magic number indicating the file as a kohi binary file. */
+    /** @brief A magic number indicating the file as a chronos binary file. */
     u32 magic_number;
     /** @brief The resource type. Maps to the enum resource_type. */
     u8 resource_type;
@@ -347,14 +347,6 @@ typedef struct mesh {
     geometry** geometries;
     transform transform;
 } mesh;
-
-typedef struct skybox {
-    texture_map cubemap;
-    geometry* g;
-    u32 instance_id;
-    /** @brief Synced to the renderer's current frame number when the material has been applied that frame. */
-    u64 render_frame_number;
-} skybox;
 
 /** @brief Shader stages available in the system. */
 typedef enum shader_stage {

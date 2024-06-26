@@ -519,3 +519,94 @@ void string_filename_no_extension_from_path(char* dest, const char* path) {
 
     string_mid(dest, path, start, end - start);
 }
+
+// ----------------------
+// cstring implementation
+// ----------------------
+
+/**
+ * @brief
+ *
+ * @param string
+ * @param length The string length not including the null terminator.
+ */
+void cstring_ensure_allocated(cstring* string, u32 length) {
+    if (string) {
+        if (string->allocated < length + 1) {
+            char* new_data = callocate(sizeof(char) * length + 1, MEMORY_TAG_STRING);
+            if (string->data) {
+                // Copy over data if there is data to copy.
+                if (string->length > 0) {
+                    string_ncopy(new_data, string->data, string->length);
+                }
+                // Clean up old data
+                cfree(string->data, sizeof(char) * string->length + 1, MEMORY_TAG_STRING);
+            }
+
+            string->data = new_data;
+            string->length = length;
+            string->allocated = length + 1;
+        }
+    }
+}
+
+void cstring_create(cstring* out_string) {
+    if (!out_string) {
+        CERROR("kstring_create requires a valid pointer to a string.");
+        return;
+    }
+
+    czero_memory(out_string, sizeof(cstring));
+
+    cstring_ensure_allocated(out_string, 0);
+    out_string->data[0] = 0;  // Null terminator.
+}
+
+void cstring_from_cstring(const char* source, cstring* out_string) {
+    if (!out_string) {
+        CERROR("kstring_from_cstring requires a valid pointer to a string.");
+        return;
+    }
+
+    u32 source_length = string_length(source);
+    czero_memory(out_string, sizeof(cstring));
+
+    cstring_ensure_allocated(out_string, source_length);
+
+    string_ncopy(out_string->data, source, source_length);
+    out_string->data[source_length] = 0;
+}
+
+void cstring_destroy(cstring* string) {
+    if (string) {
+        cfree(string->data, sizeof(char) * string->allocated, MEMORY_TAG_STRING);
+        czero_memory(string, sizeof(cstring));
+    }
+}
+
+u32 cstring_length(const cstring* string) {
+    return string ? string->length : 0;
+}
+
+u32 cstring_utf8_length(const cstring* string) {
+    return string ? string_utf8_length(string->data) : 0;
+}
+
+void cstring_append_str(cstring* string, const char* s) {
+    if (string && s) {
+        u32 length = string_length(s);
+        cstring_ensure_allocated(string, string->length + length);
+        string_ncopy(string->data + string->length, s, length);
+        string->data[string->length + length] = 0;
+        string->length = string->length + length;
+    }
+}
+
+void cstring_append_cstring(cstring* string, const cstring* other) {
+    if (string && other) {
+        cstring_ensure_allocated(string, string->length + other->length);
+        string_ncopy(string->data + string->length, other->data, other->length);
+        string->data[string->length + other->length] = 0;
+        string->length = string->length + other->length;
+    }
+}

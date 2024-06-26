@@ -13,11 +13,11 @@ typedef struct material_system_config {
 b8 material_system_initialize(u64* memory_requirement, void* state, material_system_config config);
 void material_system_shutdown(void* state);
 
-material* material_system_acquire(const char* name);
-material* material_system_acquire_from_config(material_config config);
-void material_system_release(const char* name);
+CAPI material* material_system_acquire(const char* name);
+CAPI material* material_system_acquire_from_config(material_config config);
+CAPI void material_system_release(const char* name);
 
-material* material_system_get_default();
+CAPI material* material_system_get_default();
 
 
 /**
@@ -31,7 +31,7 @@ material* material_system_get_default();
  * @param render_mode The render mode.
  * @return True on success; otherwise false.
  */
-b8 material_system_apply_global(u32 shader_id, u64 renderer_frame_number, const mat4* projection, const mat4* view, const vec4* ambient_colour, const vec3* view_position, u32 render_mode);
+CAPI b8 material_system_apply_global(u32 shader_id, u64 renderer_frame_number, const mat4* projection, const mat4* view, const vec4* ambient_colour, const vec3* view_position, u32 render_mode);
 
 /**
  * @brief Applies instance-level material data for the given material.
@@ -39,7 +39,7 @@ b8 material_system_apply_global(u32 shader_id, u64 renderer_frame_number, const 
  * @param m A pointer to the material to be applied.
  * @return True on success; otherwise false.
  */
-b8 material_system_apply_instance(material* m, b8 needs_update);
+CAPI b8 material_system_apply_instance(material* m, b8 needs_update);
 
 /**
  * @brief Applies local-level material data (typically just model matrix).
@@ -48,4 +48,4 @@ b8 material_system_apply_instance(material* m, b8 needs_update);
  * @param model A constant pointer to the model matrix to be applied.
  * @return True on success; otherwise false.
  */
-b8 material_system_apply_local(material* m, const mat4* model);
+CAPI b8 material_system_apply_local(material* m, const mat4* model);

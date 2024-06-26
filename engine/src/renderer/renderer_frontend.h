@@ -327,12 +327,12 @@ texture* renderer_depth_attachment_get(u8 index);
 /**
  * @brief Returns the current window attachment index.
  */
-u8 renderer_window_attachment_index_get();
+CAPI u8 renderer_window_attachment_index_get();
 
 /**
  * @brief Returns the number of attachments required for window-based render targets.
  */
-u8 renderer_window_attachment_count_get();
+CAPI u8 renderer_window_attachment_count_get();
 
 /**
  * @brief Creates a new renderpass.
@@ -357,6 +357,23 @@ void renderer_renderpass_destroy(renderpass* pass);
  * @brief Indicates if the renderer is capable of multi-threading.
  */
 b8 renderer_is_multithreaded();
+
+/**
+ * @brief Indicates if the provided renderer flag is enabled. If multiple
+ * flags are passed, all must be set for this to return true.
+ *
+ * @param flag The flag to be checked.
+ * @return True if the flag(s) set; otherwise false.
+ */
+CAPI b8 renderer_flag_enabled(renderer_config_flags flag);
+/**
+ * @brief Sets whether the included flag(s) are enabled or not. If multiple flags
+ * are passed, multiple are set at once.
+ *
+ * @param flag The flag to be checked.
+ * @param enabled Indicates whether or not to enable the flag(s).
+ */
+CAPI void renderer_flag_set_enabled(renderer_config_flags flag, b8 enabled);
 
 /**
  * @brief Creates a new renderbuffer to hold data for a given purpose/use. Backed by a

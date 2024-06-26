@@ -33,7 +33,7 @@ b8 render_view_system_initialize(u64* memory_requirement, void* state, render_vi
     u64 array_requirement = sizeof(render_view) * config.max_view_count;
     *memory_requirement = struct_requirement + hashtable_requirement + array_requirement;
 
-     if (!state) {
+    if (!state) {
         return true;
     }
 
@@ -65,8 +65,7 @@ void render_view_system_shutdown(void* state) {
     // Destroy all views in the system.
     for (u32 i = 0; i < state_ptr->max_view_count; ++i) {
         render_view* view = &state_ptr->registered_views[i];
-        if(view->id != INVALID_ID_U16) {
-
+        if (view->id != INVALID_ID_U16) {
             // Call its destroy routine first.
             view->on_destroy(view);
 
@@ -78,6 +77,7 @@ void render_view_system_shutdown(void* state) {
             view->id = INVALID_ID_U16;
         }
     }
+
     state_ptr = 0;
 }
 
@@ -87,7 +87,7 @@ b8 render_view_system_create(const render_view_config* config) {
         return false;
     }
 
-    if(!config->name || string_length(config->name) < 1) {
+    if (!config->name || string_length(config->name) < 1) {
         CERROR("render_view_system_create: name is required");
         return false;
     }
@@ -121,17 +121,18 @@ b8 render_view_system_create(const render_view_config* config) {
 
     render_view* view = &state_ptr->registered_views[id];
     view->id = id;
+    view->type = config->type;
     // TODO: Leaking the name, create a destroy method and kill this.
     view->name = string_duplicate(config->name);
-    view->type = config->type;
     view->custom_shader_name = config->custom_shader_name;
     view->renderpass_count = config->pass_count;
     view->passes = callocate(sizeof(renderpass) * view->renderpass_count, MEMORY_TAG_ARRAY);
 
-    // Create the renderpasses according to configuration
+    // Create the renderpasses according to configuration.
     for (u32 i = 0; i < view->renderpass_count; ++i) {
         if (!renderer_renderpass_create(&config->passes[i], &view->passes[i])) {
-            CERROR("render_view_system_create - Failed to create renderpass '%s'", config->passes[i].name);            return false;
+            CERROR("render_view_system_create - Failed to create renderpass '%s'", config->passes[i].name);
+            return false;
         }
     }
 
@@ -140,7 +141,7 @@ b8 render_view_system_create(const render_view_config* config) {
     if (config->type == RENDERER_VIEW_KNOWN_TYPE_WORLD) {
         view->on_build_packet = render_view_world_on_build_packet;      // For building the packet
         view->on_destroy_packet = render_view_world_on_destroy_packet;  // For destroying the packet.
-        view->on_render = render_view_world_on_render;                  // For rendering the packet            // For rendering the packet
+        view->on_render = render_view_world_on_render;                  // For rendering the packet
         view->on_create = render_view_world_on_create;
         view->on_destroy = render_view_world_on_destroy;
         view->on_resize = render_view_world_on_resize;
@@ -156,7 +157,7 @@ b8 render_view_system_create(const render_view_config* config) {
     } else if (config->type == RENDERER_VIEW_KNOWN_TYPE_SKYBOX) {
         view->on_build_packet = render_view_skybox_on_build_packet;      // For building the packet
         view->on_destroy_packet = render_view_skybox_on_destroy_packet;  // For destroying the packet.
-        view->on_render = render_view_skybox_on_render;             // For rendering the packet
+        view->on_render = render_view_skybox_on_render;                  // For rendering the packet
         view->on_create = render_view_skybox_on_create;
         view->on_destroy = render_view_skybox_on_destroy;
         view->on_resize = render_view_skybox_on_resize;
@@ -180,7 +181,7 @@ b8 render_view_system_create(const render_view_config* config) {
     }
 
     render_view_system_regenerate_render_targets(view);
-    
+
     // Update the hashtable entry.
     hashtable_set(&state_ptr->lookup, config->name, &id);
 
@@ -207,9 +208,9 @@ render_view* render_view_system_get(const char* name) {
     return 0;
 }
 
-b8 render_view_system_build_packet(const render_view* view, void* data, struct render_view_packet* out_packet){
+b8 render_view_system_build_packet(const render_view* view, struct linear_allocator* frame_allocator, void* data, struct render_view_packet* out_packet) {
     if (view && out_packet) {
-        return view->on_build_packet(view, data, out_packet);
+        return view->on_build_packet(view, frame_allocator, data, out_packet);
     }
 
     CERROR("render_view_system_build_packet requires valid pointers to a view and a packet.");
@@ -221,7 +222,7 @@ b8 render_view_system_on_render(const render_view* view, const render_view_packe
         return view->on_render(view, packet, frame_number, render_target_index);
     }
 
-    CERROR("render_view_system_on_render requires valid pointers to a view and a packet.");
+    CERROR("render_view_system_on_render requires a valid pointer to a data.");
     return false;
 }
 

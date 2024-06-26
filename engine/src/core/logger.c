@@ -4,6 +4,7 @@
 #include "../platform/filesystem.h"
 #include "cmemory.h"
 #include "cstring.h"
+#include "console.h"
 
 // TODO: temporary
 #include <stdarg.h>
@@ -39,15 +40,6 @@ b8 initialize_logging(u64* memory_requirement, void* state) {
         return false;
     }
 
-    // TODO: Remove this later
-    CFATAL("A test message: %f", 3.14f);
-    CERROR("A test message: %f", 3.14f);
-    CWARN("A test message: %f", 3.14f);
-    CINFO("A test message: %f", 3.14f);
-    CDEBUG("A test message: %f", 3.14f);
-    CTRACE("A test message: %f", 3.14f);
-
-    // TODO: create log file.
     return true;
 }
 
@@ -76,6 +68,9 @@ void log_output(log_level level, const char* message, ...) {
 
     // Prepend log level to message.
     string_format(out_message, "%s%s\n", level_strings[level], out_message);
+
+    // Pass along to console consumers.
+    console_write_line(level, out_message);
 
     // Print accordingly
     if (is_error) {

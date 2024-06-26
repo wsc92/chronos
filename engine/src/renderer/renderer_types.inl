@@ -169,10 +169,22 @@ typedef struct renderbuffer {
     void* internal_data;
 } renderbuffer;
 
+typedef enum renderer_config_flag_bits {
+    /** @brief Indicates that vsync should be enabled. */
+    RENDERER_CONFIG_FLAG_VSYNC_ENABLED_BIT = 0x1,
+    /** @brief Configures the renderer backend in a way that conserves power where possible. */
+    RENDERER_CONFIG_FLAG_POWER_SAVING_BIT = 0x2,
+} renderer_config_flag_bits;
+
+typedef u32 renderer_config_flags;
+
 /** @brief The generic configuration for a renderer backend. */
 typedef struct renderer_backend_config {
     /** @brief The name of the application */
     const char* application_name;
+
+    /** @brief Various configuration flags for renderer backend setup. */
+    renderer_config_flags flags;
 } renderer_backend_config;
 
 /**
@@ -552,6 +564,23 @@ typedef struct renderer_backend {
     b8 (*is_multithreaded)();
 
     /**
+     * @brief Indicates if the provided renderer flag is enabled. If multiple
+     * flags are passed, all must be set for this to return true.
+     *
+     * @param flag The flag to be checked.
+     * @return True if the flag(s) set; otherwise false.
+     */
+    b8 (*flag_enabled)(renderer_config_flags flag);
+    /**
+     * @brief Sets whether the included flag(s) are enabled or not. If multiple flags
+     * are passed, multiple are set at once.
+     *
+     * @param flag The flag to be checked.
+     * @param enabled Indicates whether or not to enable the flag(s).
+     */
+    void (*flag_set_enabled)(renderer_config_flags flag, b8 enabled);
+
+    /**
      * @brief Creates and assigns the renderer-backend-specific buffer.
      *
      * @param buffer A pointer to create the internal buffer for.
@@ -723,6 +752,7 @@ typedef struct render_view_config {
 } render_view_config;
 
 struct render_view_packet;
+struct linear_allocator;
 
 /**
  * @brief A render view instance, responsible for the generation
@@ -782,7 +812,7 @@ typedef struct render_view {
      * @param out_packet A pointer to hold the generated packet.
      * @return True on success; otherwise false.
      */
-    b8 (*on_build_packet)(const struct render_view* self, void* data, struct render_view_packet* out_packet);
+    b8 (*on_build_packet)(const struct render_view* self, struct linear_allocator* frame_allocator, void* data, struct render_view_packet* out_packet);
 
     /**
      * @brief Destroys the provided render view packet.
@@ -852,8 +882,8 @@ typedef struct ui_packet_data {
 } ui_packet_data;
 
 typedef struct pick_packet_data {
-    mesh_packet_data world_mesh_data;
-    u32 world_geometry_count;
+    // Copy of frame data darray ptr
+    geometry_render_data* world_mesh_data;
     mesh_packet_data ui_mesh_data;
     u32 ui_geometry_count;
     // TODO: temp
@@ -861,8 +891,10 @@ typedef struct pick_packet_data {
     struct ui_text** texts;
 } pick_packet_data;
 
+struct skybox;
+
 typedef struct skybox_packet_data {
-    skybox* sb;
+    struct skybox* sb;
 } skybox_packet_data;
 
 /**

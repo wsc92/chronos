@@ -155,3 +155,6 @@ CINLINE range get_aligned_range(u64 offset,  u64 size, u64 granularity) {
     u64 aligned_size = get_aligned(offset + size, granularity) - aligned_offset;
     return (range){aligned_offset, aligned_size};
 }
+
+#define CMIN(x, y) (x < y ? x : y)
+#define CMAX(x, y) (x > y ? x : y)

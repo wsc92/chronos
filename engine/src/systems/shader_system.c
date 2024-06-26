@@ -7,7 +7,7 @@
 #include "../containers/darray.h"
 #include "../renderer/renderer_frontend.h"
 
-#include "texture_system.h"
+#include "../systems/texture_system.h"
 
 // The internal shader system state.
 typedef struct shader_system_state {
@@ -35,6 +35,7 @@ b8 uniform_add(shader* shader, const char* uniform_name, u32 size, shader_unifor
 b8 uniform_name_valid(shader* shader, const char* uniform_name);
 b8 shader_uniform_add_state_valid(shader* shader);
 void shader_destroy(shader* s);
+///////////////////////
 
 b8 shader_system_initialize(u64* memory_requirement, void* memory, shader_system_config config) {
     // Verify configuration.
@@ -317,6 +318,7 @@ b8 shader_system_uniform_set_by_index(u16 index, const void* value) {
     }
     return renderer_set_uniform(shader, uniform, value);
 }
+
 b8 shader_system_sampler_set_by_index(u16 index, const texture* t) {
     return shader_system_uniform_set_by_index(index, t);
 }
@@ -398,6 +400,7 @@ b8 add_sampler(shader* shader, shader_uniform_config* config) {
             return false;
         }
         location = global_texture_count;
+
         // NOTE: creating a default texture map to be used here. Can always be updated later.
         texture_map default_map = {};
         default_map.filter_magnify = TEXTURE_FILTER_MODE_LINEAR;
