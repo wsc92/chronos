@@ -863,7 +863,7 @@ b8 recreate_swapchain(renderer_backend* backend) {
         return false;
     }
 
-    // Detect if the window is too small to be drawn to
+    // // Detect if the window is too small to be drawn to
     if (context.framebuffer_width == 0 || context.framebuffer_height == 0) {
         CDEBUG("recreate_swapchain called when window is < 1 in a dimension. Booting.");
         return false;

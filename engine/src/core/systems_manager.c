@@ -103,7 +103,7 @@ b8 register_known_systems_pre_boot(systems_manager_state* state, application_con
         return false;
     }
 
-    // KVars
+    // CVars
     if (!systems_manager_register(state, C_SYSTEM_TYPE_CVAR, cvar_initialize, cvar_shutdown, 0, 0)) {
         CERROR("Failed to register CVar system.");
         return false;
