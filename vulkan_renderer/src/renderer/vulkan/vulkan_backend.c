@@ -1,7 +1,7 @@
 #include "vulkan_backend.h"
 
 #include "vulkan_types.inl"
-#include "vulkan_platform.h"
+#include "platform/vulkan_platform.h"
 #include "vulkan_device.h"
 #include "vulkan_swapchain.h"
 #include "vulkan_command_buffer.h"
@@ -9,23 +9,23 @@
 #include "vulkan_image.h"
 #include "vulkan_pipeline.h"
 
-#include "../../core/logger.h"
-#include "../../core/cstring.h"
-#include "../../core/cmemory.h"
-#include "../../core/event.h"
+#include "../../../../engine/src/core/logger.h"
+#include "../../../../engine/src/core/cstring.h"
+#include "../../../../engine/src/core/cmemory.h"
+#include "../../../../engine/src/core/event.h"
 
-#include "../../containers/darray.h"
+#include "../../../../engine/src/containers/darray.h"
 
-#include "../../math/math_types.h"
+#include "../../../../engine/src/math/math_types.h"
 
-#include "../../renderer/renderer_frontend.h"
+#include "../../../../engine/src/renderer/renderer_frontend.h"
 
-#include "../../platform/platform.h"
+#include "../../../../engine/src/platform/platform.h"
 
-#include "../../systems/shader_system.h"
-#include "../../systems/material_system.h"
-#include "../../systems/texture_system.h"
-#include "../../systems/resource_system.h"
+#include "../../../../engine/src/systems/shader_system.h"
+#include "../../../../engine/src/systems/material_system.h"
+#include "../../../../engine/src/systems/texture_system.h"
+#include "../../../../engine/src/systems/resource_system.h"
 
 // NOTE: If wanting to trace allocations, uncomment this.
 // #ifndef CVULKAN_ALLOCATOR_TRACE
@@ -48,8 +48,8 @@ VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_callback(
 
 i32 find_memory_index(u32 type_filter, u32 property_flags);
 
-void create_command_buffers(renderer_backend* backend);
-b8 recreate_swapchain(renderer_backend* backend);
+void create_command_buffers(renderer_plugin* backend);
+b8 recreate_swapchain(renderer_plugin* backend);
 b8 create_module(vulkan_shader* shader, vulkan_shader_stage_config config, vulkan_shader_stage* shader_stage);
 b8 vulkan_buffer_copy_range_internal(VkBuffer source, u64 source_offset, VkBuffer dest, u64 dest_offset, u64 size);
 
@@ -224,7 +224,7 @@ b8 create_vulkan_allocator(VkAllocationCallbacks* callbacks) {
 }
 #endif  // CVULKAN_USE_CUSTOM_ALLOCATOR == 1
 
-b8 vulkan_renderer_backend_initialize(renderer_backend* backend, const renderer_backend_config* config, u8* out_window_render_target_count) {
+b8 vulkan_renderer_backend_initialize(renderer_plugin* backend, const renderer_backend_config* config, u8* out_window_render_target_count) {
     // Function pointers
     context.find_memory_index = find_memory_index;
     context.render_flag_changed = false;
@@ -470,7 +470,7 @@ b8 vulkan_renderer_backend_initialize(renderer_backend* backend, const renderer_
     return true;
 }
 
-void vulkan_renderer_backend_shutdown(renderer_backend* backend) {
+void vulkan_renderer_backend_shutdown(renderer_plugin* backend) {
     vkDeviceWaitIdle(context.device.logical_device);
 
     // Destroy in the opposite order of creation.
@@ -546,7 +546,7 @@ void vulkan_renderer_backend_shutdown(renderer_backend* backend) {
     }
 }
 
-void vulkan_renderer_backend_on_resized(renderer_backend* backend, u16 width, u16 height) {
+void vulkan_renderer_backend_on_resized(renderer_plugin* backend, u16 width, u16 height) {
     // Update the "framebuffer size generation", a counter which indicates when the
     // framebuffer size has been updated.
     context.framebuffer_width = width;
@@ -556,7 +556,7 @@ void vulkan_renderer_backend_on_resized(renderer_backend* backend, u16 width, u1
     CINFO("Vulkan renderer backend->resized: w/h/gen: %i/%i/%llu", width, height, context.framebuffer_size_generation);
 }
 
-b8 vulkan_renderer_backend_begin_frame(renderer_backend* backend, f32 delta_time) {
+b8 vulkan_renderer_backend_begin_frame(renderer_plugin* backend, f32 delta_time) {
     context.frame_delta_time = delta_time;
     vulkan_device* device = &context.device;
 
@@ -629,7 +629,7 @@ b8 vulkan_renderer_backend_begin_frame(renderer_backend* backend, f32 delta_time
     return true;
 }
 
-b8 vulkan_renderer_backend_end_frame(renderer_backend* backend, f32 delta_time) {
+b8 vulkan_renderer_backend_end_frame(renderer_plugin* backend, f32 delta_time) {
     vulkan_command_buffer* command_buffer = &context.graphics_command_buffers[context.image_index];
 
     vulkan_command_buffer_end(command_buffer);
@@ -830,7 +830,7 @@ i32 find_memory_index(u32 type_filter, u32 property_flags) {
     return -1;
 }
 
-void create_command_buffers(renderer_backend* backend) {
+void create_command_buffers(renderer_plugin* backend) {
     if (!context.graphics_command_buffers) {
         context.graphics_command_buffers = darray_reserve(vulkan_command_buffer, context.swapchain.image_count);
         for (u32 i = 0; i < context.swapchain.image_count; ++i) {
@@ -856,14 +856,14 @@ void create_command_buffers(renderer_backend* backend) {
     CDEBUG("Vulkan command buffers created.");
 }
 
-b8 recreate_swapchain(renderer_backend* backend) {
+b8 recreate_swapchain(renderer_plugin* backend) {
     // If already being recreated, do not try again.
     if (context.recreating_swapchain) {
         CDEBUG("recreate_swapchain called when already recreating. Booting.");
         return false;
     }
 
-    // // Detect if the window is too small to be drawn to
+    // Detect if the window is too small to be drawn to
     if (context.framebuffer_width == 0 || context.framebuffer_height == 0) {
         CDEBUG("recreate_swapchain called when window is < 1 in a dimension. Booting.");
         return false;
@@ -2284,7 +2284,7 @@ b8 vulkan_renderpass_create(const renderpass_config* config, renderpass* out_ren
     // Setup the attachment references.
     u32 attachments_added = 0;
 
-        // Colour attachment reference.
+    // Colour attachment reference.
     VkAttachmentReference* colour_attachment_references = 0;
     u32 colour_attachment_count = darray_length(colour_attachment_descs);
     if (colour_attachment_count > 0) {
@@ -2344,6 +2344,7 @@ b8 vulkan_renderpass_create(const renderpass_config* config, renderpass* out_ren
     // Render pass create.
     VkRenderPassCreateInfo render_pass_create_info = {VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
     render_pass_create_info.attachmentCount = darray_length(attachment_descriptions);
+    ;
     render_pass_create_info.pAttachments = attachment_descriptions;
     render_pass_create_info.subpassCount = 1;
     render_pass_create_info.pSubpasses = &subpass;

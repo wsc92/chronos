@@ -49,7 +49,7 @@ void texture_system_shutdown(void* state);
  * Only takes effect the first time the texture is acquired.
  * @return A pointer to the loaded texture. Can be a pointer to the default texture if not found.
  */
-texture* texture_system_acquire(const char* name, b8 auto_release);
+CAPI texture* texture_system_acquire(const char* name, b8 auto_release);
 
 
 /**
@@ -71,7 +71,7 @@ texture* texture_system_acquire(const char* name, b8 auto_release);
  * Only takes effect the first time the texture is acquired.
  * @return A pointer to the loaded texture. Can be a pointer to the default texture if not found.
  */
-texture* texture_system_acquire_cube(const char* name, b8 auto_release);
+CAPI texture* texture_system_acquire_cube(const char* name, b8 auto_release);
 
 /**
  * @brief Attempts to acquire a writeable texture with the given name. This does not point to
@@ -85,7 +85,7 @@ texture* texture_system_acquire_cube(const char* name, b8 auto_release);
  * @param has_transparency Indicates if the texture will have transparency.
  * @return A pointer to the generated texture.
  */
-texture* texture_system_aquire_writeable(const char* name, u32 width, u32 height, u8 channel_count, b8 has_transparency);
+CAPI texture* texture_system_aquire_writeable(const char* name, u32 width, u32 height, u8 channel_count, b8 has_transparency);
 
 /**
  * @brief Releases a texture with the given name. Ignores non-existant textures.
@@ -94,7 +94,7 @@ texture* texture_system_aquire_writeable(const char* name, u32 width, u32 height
  *
  * @param name The name of the texture to unload.
  */
-void texture_system_release(const char* name);
+CAPI void texture_system_release(const char* name);
 
 /**
  * @brief Wraps the provided internal data in a texture structure using the parameters
@@ -113,7 +113,7 @@ void texture_system_release(const char* name);
  * @param register_texture Indicates if the texture should be registered with the system.
  * @return A pointer to the wrapped texture.
  */
-void texture_system_wrap_internal(const char* name, u32 width, u32 height, u8 channel_count, b8 has_transparency, b8 is_writeable, b8 register_texture, void* internal_data, texture* out_texture);
+CAPI void texture_system_wrap_internal(const char* name, u32 width, u32 height, u8 channel_count, b8 has_transparency, b8 is_writeable, b8 register_texture, void* internal_data, texture* out_texture);
 
 /**
  * @brief Sets the internal data of a texture. Useful for replacing internal data from within the
@@ -123,7 +123,7 @@ void texture_system_wrap_internal(const char* name, u32 width, u32 height, u8 ch
  * @param internal_data A pointer to the internal data to be set.
  * @return True on success; otherwise false.
  */
-b8 texture_system_set_internal(texture* t, void* internal_data);
+CAPI b8 texture_system_set_internal(texture* t, void* internal_data);
 
 /**
  * @brief Resizes the given texture. May only be done on writeable textures.
@@ -135,7 +135,7 @@ b8 texture_system_set_internal(texture* t, void* internal_data);
  * @param regenerate_internal_data Indicates if the internal data should be regenerated.
  * @return True on success; otherwise false.
  */
-b8 texture_system_resize(texture* t, u32 width, u32 height, b8 regenerate_internal_data);
+CAPI b8 texture_system_resize(texture* t, u32 width, u32 height, b8 regenerate_internal_data);
 
 /**
  * @brief Writes the given data to the provided texture. May only be used on
@@ -147,28 +147,28 @@ b8 texture_system_resize(texture* t, u32 width, u32 height, b8 regenerate_intern
  * @param data A pointer to the data to be written.
  * @return True on success; otherwise false.
  */
-b8 texture_system_write_data(texture* t, u32 offset, u32 size, void* data);
+CAPI b8 texture_system_write_data(texture* t, u32 offset, u32 size, void* data);
 
 /**
  * @brief Gets a pointer to the default texture. No reference counting is
  * done for default textures.
  */
-texture* texture_system_get_default_texture();
+CAPI texture* texture_system_get_default_texture();
 
 /**
  * @brief Gets a pointer to the default diffuse texture. No reference counting is
  * done for default textures.
  */
-texture* texture_system_get_default_diffuse_texture();
+CAPI texture* texture_system_get_default_diffuse_texture();
 
 /**
  * @brief Gets a pointer to the default specular texture. No reference counting is
  * done for default textures.
  */
-texture* texture_system_get_default_specular_texture();
+CAPI texture* texture_system_get_default_specular_texture();
 
 /**
  * @brief Gets a pointer to the default normal texture. No reference counting is
  * done for default textures.
  */
-texture* texture_system_get_default_normal_texture();
+CAPI texture* texture_system_get_default_normal_texture();

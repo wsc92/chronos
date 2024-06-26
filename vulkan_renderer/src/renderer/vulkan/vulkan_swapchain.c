@@ -1,11 +1,11 @@
 #include "vulkan_swapchain.h"
 
-#include "../../core/logger.h"
-#include "../../core/cmemory.h"
+#include "../../../../engine/src/core/logger.h"
+#include "../../../../engine/src/core/cmemory.h"
 #include "vulkan_device.h"
 #include "vulkan_image.h"
 
-#include "../../systems/texture_system.h"
+#include "../../../../engine/src/systems/texture_system.h"
 
 void create(vulkan_context* context, u32 width, u32 height, renderer_config_flags flags, vulkan_swapchain* swapchain);
 void destroy(vulkan_context* context, vulkan_swapchain* swapchain);

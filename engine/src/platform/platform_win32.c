@@ -1,30 +1,29 @@
-#include "platform.h"
+#include "platform/platform.h"
 
-//Windows Platform layer.
+// Windows platform layer.
 #if CPLATFORM_WINDOWS
 
-#include "../core/logger.h"
-#include "../core/input.h"
-#include "../core/event.h"
-#include "../core/cthread.h"
-#include "../core/cmutex.h"
-#include "../containers/darray.h"
+#include "core/logger.h"
+#include "core/input.h"
+#include "core/event.h"
+#include "core/kthread.h"
+#include "core/kmutex.h"
+#include "core/kmemory.h"
 
+#include "containers/darray.h"
+
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <windowsx.h>
+#include <windowsx.h>  // param input extraction
 #include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 
-// For surface creation
-#include <vulkan/vulkan.h>
-#include <vulkan/vulkan_win32.h>
-#include "renderer/vulkan/vulkan_types.inl"
-
-typedef struct platform_state {
+typedef struct win32_handle_info {
     HINSTANCE h_instance;
     HWND hwnd;
-    VkSurfaceKHR surface;
+} win32_handle_info;
+
+typedef struct platform_state {
+    win32_handle_info handle;
 } platform_state;
 
 static platform_state *state_ptr;
@@ -32,6 +31,7 @@ static platform_state *state_ptr;
 // Clock
 static f64 clock_frequency;
 static LARGE_INTEGER start_time;
+
 
 LRESULT CALLBACK win32_process_message(HWND hwnd, u32 msg, WPARAM w_param, LPARAM l_param);
 
@@ -42,91 +42,98 @@ void clock_setup() {
     QueryPerformanceCounter(&start_time);
 }
 
-b8 platform_system_startup(
-    u64 *memory_requirement,
-    void *state,
-    const char *application_name,
-    i32 x,
-    i32 y,
-    i32 width,
-    i32 height) {
+b8 platform_system_startup(u64 *memory_requirement, void *state, void *config) {
+    platform_system_config *typed_config = (platform_system_config *)config;
     *memory_requirement = sizeof(platform_state);
     if (state == 0) {
         return true;
     }
-
     state_ptr = state;
-    state_ptr->h_instance = GetModuleHandleA(0);
+    state_ptr->handle.h_instance = GetModuleHandleA(0);
 
     // Setup and register window class.
-    HICON icon = LoadIcon(state_ptr->h_instance, IDI_APPLICATION);
+    HICON icon = LoadIcon(state_ptr->handle.h_instance, IDI_APPLICATION);
     WNDCLASSA wc;
     memset(&wc, 0, sizeof(wc));
     wc.style = CS_DBLCLKS;  // Get double-clicks
     wc.lpfnWndProc = win32_process_message;
     wc.cbClsExtra = 0;
     wc.cbWndExtra = 0;
-    wc.hInstance = state_ptr->h_instance;
+    wc.hInstance = state_ptr->handle.h_instance;
     wc.hIcon = icon;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);  // NULL; // Manage the cursor manually
     wc.hbrBackground = NULL;                   // Transparent
     wc.lpszClassName = "chronos_window_class";
+
     if (!RegisterClassA(&wc)) {
         MessageBoxA(0, "Window registration failed", "Error", MB_ICONEXCLAMATION | MB_OK);
         return false;
     }
+
     // Create window
-    u32 client_x = x;
-    u32 client_y = y;
-    u32 client_width = width;
-    u32 client_height = height;
+    u32 client_x = typed_config->x;
+    u32 client_y = typed_config->y;
+    u32 client_width = typed_config->width;
+    u32 client_height = typed_config->height;
+
     u32 window_x = client_x;
     u32 window_y = client_y;
     u32 window_width = client_width;
     u32 window_height = client_height;
+
     u32 window_style = WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION;
     u32 window_ex_style = WS_EX_APPWINDOW;
+
     window_style |= WS_MAXIMIZEBOX;
     window_style |= WS_MINIMIZEBOX;
     window_style |= WS_THICKFRAME;
+
     // Obtain the size of the border.
     RECT border_rect = {0, 0, 0, 0};
     AdjustWindowRectEx(&border_rect, window_style, 0, window_ex_style);
+
     // In this case, the border rectangle is negative.
     window_x += border_rect.left;
     window_y += border_rect.top;
+
     // Grow by the size of the OS border.
     window_width += border_rect.right - border_rect.left;
     window_height += border_rect.bottom - border_rect.top;
+
     HWND handle = CreateWindowExA(
-        window_ex_style, "chronos_window_class", application_name,
+        window_ex_style, "chronos_window_class", typed_config->application_name,
         window_style, window_x, window_y, window_width, window_height,
-        0, 0, state_ptr->h_instance, 0);
+        0, 0, state_ptr->handle.h_instance, 0);
+
     if (handle == 0) {
         MessageBoxA(NULL, "Window creation failed!", "Error!", MB_ICONEXCLAMATION | MB_OK);
-        CFATAL("Window creation failed!");
+
+        KFATAL("Window creation failed!");
         return false;
     } else {
-        state_ptr->hwnd = handle;
+        state_ptr->handle.hwnd = handle;
     }
+
     // Show the window
     b32 should_activate = 1;  // TODO: if the window should not accept input, this should be false.
     i32 show_window_command_flags = should_activate ? SW_SHOW : SW_SHOWNOACTIVATE;
     // If initially minimized, use SW_MINIMIZE : SW_SHOWMINNOACTIVE;
     // If initially maximized, use SW_SHOWMAXIMIZED : SW_MAXIMIZE
-    ShowWindow(state_ptr->hwnd, show_window_command_flags);
+    ShowWindow(state_ptr->handle.hwnd, show_window_command_flags);
 
     // Clock setup
     clock_setup();
 
     return true;
 }
+
 void platform_system_shutdown(void *plat_state) {
-    if (state_ptr && state_ptr->hwnd) {
-        DestroyWindow(state_ptr->hwnd);
-        state_ptr->hwnd = 0;
+    if (state_ptr && state_ptr->handle.hwnd) {
+        DestroyWindow(state_ptr->handle.hwnd);
+        state_ptr->handle.hwnd = 0;
     }
 }
+
 b8 platform_pump_messages() {
     if (state_ptr) {
         MSG message;
@@ -137,21 +144,27 @@ b8 platform_pump_messages() {
     }
     return true;
 }
+
 void *platform_allocate(u64 size, b8 aligned) {
     return malloc(size);
 }
+
 void platform_free(void *block, b8 aligned) {
     free(block);
 }
+
 void *platform_zero_memory(void *block, u64 size) {
     return memset(block, 0, size);
 }
+
 void *platform_copy_memory(void *dest, const void *source, u64 size) {
     return memcpy(dest, source, size);
 }
+
 void *platform_set_memory(void *dest, i32 value, u64 size) {
     return memset(dest, value, size);
 }
+
 void platform_console_write(const char *message, u8 colour) {
     HANDLE console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
     // FATAL,ERROR,WARN,INFO,DEBUG,TRACE
@@ -162,6 +175,7 @@ void platform_console_write(const char *message, u8 colour) {
     DWORD number_written = 0;
     WriteConsoleA(GetStdHandle(STD_OUTPUT_HANDLE), message, (DWORD)length, &number_written, 0);
 }
+
 void platform_console_write_error(const char *message, u8 colour) {
     HANDLE console_handle = GetStdHandle(STD_ERROR_HANDLE);
     // FATAL,ERROR,WARN,INFO,DEBUG,TRACE
@@ -190,12 +204,22 @@ void platform_sleep(u64 ms) {
 i32 platform_get_processor_count() {
     SYSTEM_INFO sysinfo;
     GetSystemInfo(&sysinfo);
-    CINFO("%i processor cores detected.", sysinfo.dwNumberOfProcessors);
+    KINFO("%i processor cores detected.", sysinfo.dwNumberOfProcessors);
     return sysinfo.dwNumberOfProcessors;
 }
 
+void platform_get_handle_info(u64 *out_size, void *memory) {
+    *out_size = sizeof(win32_handle_info);
+    if (!memory) {
+        return;
+    }
+
+    kcopy_memory(memory, &state_ptr->handle, *out_size);
+}
+
+
 // NOTE: Begin threads
-b8 cthread_create(pfn_thread_start start_function_ptr, void *params, b8 auto_detach, cthread *out_thread) {
+b8 kthread_create(pfn_thread_start start_function_ptr, void *params, b8 auto_detach, kthread *out_thread) {
     if (!start_function_ptr) {
         return false;
     }
@@ -207,7 +231,7 @@ b8 cthread_create(pfn_thread_start start_function_ptr, void *params, b8 auto_det
         params,                                      // param to pass to thread
         0,
         (DWORD *)&out_thread->thread_id);
-    CDEBUG("Starting process on thread id: %#x", out_thread->thread_id);
+    KDEBUG("Starting process on thread id: %#x", out_thread->thread_id);
     if (!out_thread->internal_data) {
         return false;
     }
@@ -217,7 +241,7 @@ b8 cthread_create(pfn_thread_start start_function_ptr, void *params, b8 auto_det
     return true;
 }
 
-void cthread_destroy(cthread *thread) {
+void kthread_destroy(kthread *thread) {
     if (thread && thread->internal_data) {
         DWORD exit_code;
         GetExitCodeThread(thread->internal_data, &exit_code);
@@ -230,21 +254,21 @@ void cthread_destroy(cthread *thread) {
     }
 }
 
-void cthread_detach(cthread *thread) {
+void kthread_detach(kthread *thread) {
     if (thread && thread->internal_data) {
         CloseHandle(thread->internal_data);
         thread->internal_data = 0;
     }
 }
 
-void cthread_cancel(cthread *thread) {
+void kthread_cancel(kthread *thread) {
     if (thread && thread->internal_data) {
         TerminateThread(thread->internal_data, 0);
         thread->internal_data = 0;
     }
 }
 
-b8 cthread_is_active(cthread *thread) {
+b8 kthread_is_active(kthread *thread) {
     if (thread && thread->internal_data) {
         DWORD exit_code = WaitForSingleObject(thread->internal_data, 0);
         if (exit_code == WAIT_TIMEOUT) {
@@ -254,7 +278,7 @@ b8 cthread_is_active(cthread *thread) {
     return false;
 }
 
-void cthread_sleep(cthread *thread, u64 ms) {
+void kthread_sleep(kthread *thread, u64 ms) {
     platform_sleep(ms);
 }
 
@@ -265,29 +289,29 @@ u64 get_thread_id() {
 // NOTE: End threads.
 
 // NOTE: Begin mutexes
-b8 cmutex_create(cmutex *out_mutex) {
+b8 kmutex_create(kmutex *out_mutex) {
     if (!out_mutex) {
         return false;
     }
 
     out_mutex->internal_data = CreateMutex(0, 0, 0);
     if (!out_mutex->internal_data) {
-        CERROR("Unable to create mutex.");
+        KERROR("Unable to create mutex.");
         return false;
     }
-    // CTRACE("Created mutex.");
+    // KTRACE("Created mutex.");
     return true;
 }
 
-void cmutex_destroy(cmutex *mutex) {
+void kmutex_destroy(kmutex *mutex) {
     if (mutex && mutex->internal_data) {
         CloseHandle(mutex->internal_data);
-        // CTRACE("Destroyed mutex.");
+        // KTRACE("Destroyed mutex.");
         mutex->internal_data = 0;
     }
 }
 
-b8 cmutex_lock(cmutex *mutex) {
+b8 kmutex_lock(kmutex *mutex) {
     if (!mutex) {
         return false;
     }
@@ -296,49 +320,28 @@ b8 cmutex_lock(cmutex *mutex) {
     switch (result) {
         // The thread got ownership of the mutex
         case WAIT_OBJECT_0:
-            // CTRACE("Mutex locked.");
+            // KTRACE("Mutex locked.");
             return true;
 
             // The thread got ownership of an abandoned mutex.
         case WAIT_ABANDONED:
-            CERROR("Mutex lock failed.");
+            KERROR("Mutex lock failed.");
             return false;
     }
-    // CTRACE("Mutex locked.");
+    // KTRACE("Mutex locked.");
     return true;
 }
 
-b8 cmutex_unlock(cmutex *mutex) {
+b8 kmutex_unlock(kmutex *mutex) {
     if (!mutex || !mutex->internal_data) {
         return false;
     }
     i32 result = ReleaseMutex(mutex->internal_data);
-    // CTRACE("Mutex unlocked.");
+    // KTRACE("Mutex unlocked.");
     return result != 0;  // 0 is a failure
 }
 
 // NOTE: End mutexes.
-
-void platform_get_required_extension_names(const char ***names_darray) {
-    darray_push(*names_darray, &"VK_KHR_win32_surface");
-}
-
-// Surface creation for Vulkan
-b8 platform_create_vulkan_surface(vulkan_context *context) {
-    if (!state_ptr) {
-        return false;
-    }
-    VkWin32SurfaceCreateInfoKHR create_info = {VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR};
-    create_info.hinstance = state_ptr->h_instance;
-    create_info.hwnd = state_ptr->hwnd;
-    VkResult result = vkCreateWin32SurfaceKHR(context->instance, &create_info, context->allocator, &state_ptr->surface);
-    if (result != VK_SUCCESS) {
-        CFATAL("Vulkan surface creation failed.");
-        return false;
-    }
-    context->surface = state_ptr->surface;
-    return true;
-}
 
 LRESULT CALLBACK win32_process_message(HWND hwnd, u32 msg, WPARAM w_param, LPARAM l_param) {
     switch (msg) {
@@ -359,6 +362,7 @@ LRESULT CALLBACK win32_process_message(HWND hwnd, u32 msg, WPARAM w_param, LPARA
             GetClientRect(hwnd, &r);
             u32 width = r.right - r.left;
             u32 height = r.bottom - r.top;
+
             // Fire the event. The application layer should pick this up, but not handle it
             // as it shouldn be visible to other parts of the application.
             event_context context;
@@ -373,8 +377,10 @@ LRESULT CALLBACK win32_process_message(HWND hwnd, u32 msg, WPARAM w_param, LPARA
             // Key pressed/released
             b8 pressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
             keys key = (u16)w_param;
+
             // Check for extended scan code.
             b8 is_extended = (HIWORD(l_param) & KF_EXTENDED) == KF_EXTENDED;
+
             // Keypress only determines if _any_ alt/ctrl/shift key is pressed. Determine which one if so.
             if (w_param == VK_MENU) {
                 key = is_extended ? KEY_RALT : KEY_LALT;
@@ -386,8 +392,10 @@ LRESULT CALLBACK win32_process_message(HWND hwnd, u32 msg, WPARAM w_param, LPARA
             } else if (w_param == VK_CONTROL) {
                 key = is_extended ? KEY_RCONTROL : KEY_LCONTROL;
             }
+
             // Pass to the input subsystem for processing.
             input_process_key(key, pressed);
+
             // Return 0 to prevent default window behaviour for some keypresses, such as alt.
             return 0;
         }
@@ -395,6 +403,7 @@ LRESULT CALLBACK win32_process_message(HWND hwnd, u32 msg, WPARAM w_param, LPARA
             // Mouse move
             i32 x_position = GET_X_LPARAM(l_param);
             i32 y_position = GET_Y_LPARAM(l_param);
+
             // Pass over to the input subsystem.
             input_process_mouse_move(x_position, y_position);
         } break;
@@ -428,12 +437,15 @@ LRESULT CALLBACK win32_process_message(HWND hwnd, u32 msg, WPARAM w_param, LPARA
                     mouse_button = BUTTON_RIGHT;
                     break;
             }
+
             // Pass over to the input subsystem.
             if (mouse_button != BUTTON_MAX_BUTTONS) {
                 input_process_button(mouse_button, pressed);
             }
         } break;
     }
+
     return DefWindowProcA(hwnd, msg, w_param, l_param);
 }
-#endif  // KPLATFORM_WINDOWS
+
+#endif  // CPLATFORM_WINDOWS

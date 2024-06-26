@@ -120,7 +120,7 @@ STATIC_ASSERT(sizeof(f64) == 8, "Expected f64 to be 8 bytes.");
 #define CCLAMP(value, min, max) ((value <= min) ? min : (value >= max) ? max : value)
 
 // Inlining
-#if defined(__clang__) || defined(__gcc__)
+#if defined(__clang__) || defined(__GNUC__)
 #define CINLINE __attribute__((always_inline)) inline
 #define CNOINLINE __attribute__((noinline))
 #elif defined(_MSC_VER)

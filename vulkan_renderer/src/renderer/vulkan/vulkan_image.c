@@ -2,8 +2,8 @@
 
 #include "vulkan_device.h"
 
-#include "../../core/cmemory.h"
-#include "../../core/logger.h"
+#include "../../../../engine/src/core/cmemory.h"
+#include "../../../../engine/src/core/logger.h"
 
 void vulkan_image_create(
     vulkan_context* context,

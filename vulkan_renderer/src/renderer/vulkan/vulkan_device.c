@@ -1,8 +1,8 @@
 #include "vulkan_device.h"
-#include "../../core/logger.h"
-#include "../../core/cstring.h"
-#include "../../core/cmemory.h"
-#include "../../containers/darray.h"
+#include "../../../../engine/src/core/logger.h"
+#include "../../../../engine/src/core/cstring.h"
+#include "../../../../engine/src/core/cmemory.h"
+#include "../../../../engine/src/containers/darray.h"
 
 typedef struct vulkan_physical_device_requirements {
     b8 graphics;
@@ -300,7 +300,7 @@ b8 select_physical_device(vulkan_context* context) {
     // NOTE: Enable this if compute will be required.
     // requirements.compute = true;
     requirements.sampler_anisotropy = true;
-#if KPLATFORM_APPLE
+#if CPLATFORM_APPLE
     requirements.discrete_gpu = false;
 #else
     requirements.discrete_gpu = true;
@@ -309,7 +309,6 @@ b8 select_physical_device(vulkan_context* context) {
     darray_push(requirements.device_extension_names, &VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
     // Iterate physical devices to find one that fits the bill.
-
     VkPhysicalDevice physical_devices[32];
     VK_CHECK(vkEnumeratePhysicalDevices(context->instance, &physical_device_count, physical_devices));
     for (u32 i = 0; i < physical_device_count; ++i) {
@@ -405,7 +404,6 @@ b8 select_physical_device(vulkan_context* context) {
             break;
         }
     }
-
 
     // Clean up requirements.
     darray_destroy(requirements.device_extension_names);

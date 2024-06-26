@@ -1,10 +1,10 @@
 #include "vulkan_shader_utils.h"
 
-#include "../../core/cstring.h"
-#include "../../core/logger.h"
-#include "../../core/cmemory.h"
+#include "../../../../engine/src/core/cstring.h"
+#include "../../../../engine/src/core/logger.h"
+#include "../../../../engine/src/core/cmemory.h"
 
-#include "../../systems/resource_system.h"
+#include "../../../../engine/src/systems/resource_system.h"
 
 b8 create_shader_module(
     vulkan_context* context,
@@ -13,8 +13,7 @@ b8 create_shader_module(
     VkShaderStageFlagBits shader_stage_flag,
     u32 stage_index,
     vulkan_shader_stage* shader_stages) {
-    
-    // Build file name, which will also be used as the resource name.
+    // Build file name, which will also be used as the resource name..
     char file_name[512];
     string_format(file_name, "shaders/%s.%s.spv", name, type_str);
 
@@ -27,7 +26,6 @@ b8 create_shader_module(
 
     czero_memory(&shader_stages[stage_index].create_info, sizeof(VkShaderModuleCreateInfo));
     shader_stages[stage_index].create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-
     // Use the resource's size and data directly.
     shader_stages[stage_index].create_info.codeSize = binary_resource.data_size;
     shader_stages[stage_index].create_info.pCode = (u32*)binary_resource.data;

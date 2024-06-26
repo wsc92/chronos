@@ -1,12 +1,12 @@
 #include "vulkan_pipeline.h"
 #include "vulkan_utils.h"
 
-#include "../../core/cmemory.h"
-#include "../../core/logger.h"
+#include "../../../../engine/src/core/cmemory.h"
+#include "../../../../engine/src/core/logger.h"
 
-#include "../../systems/shader_system.h"
+#include "../../../../engine/src/systems/shader_system.h"
 
-#include "../../math/math_types.h"
+#include "../../../../engine/src/math/math_types.h"
 
 b8 vulkan_graphics_pipeline_create(vulkan_context* context, const vulkan_pipeline_config* config, vulkan_pipeline* out_pipeline) {
     // Viewport state

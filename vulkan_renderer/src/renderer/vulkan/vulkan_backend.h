@@ -1,16 +1,16 @@
 #pragma once
 
-#include "../renderer_backend.h"
-#include "../../resources/resource_types.h"
+#include "../../vulkan_renderer_plugin_main.h"
+#include "../../../../engine/src/resources/resource_types.h"
 
 struct shader;
 struct shader_uniform;
 
-b8 vulkan_renderer_backend_initialize(renderer_backend* backend, const renderer_backend_config* config, u8* out_window_render_target_count);
-void vulkan_renderer_backend_shutdown(renderer_backend* backend);
-void vulkan_renderer_backend_on_resized(renderer_backend* backend, u16 width, u16 height);
-b8 vulkan_renderer_backend_begin_frame(renderer_backend* backend, f32 delta_time);
-b8 vulkan_renderer_backend_end_frame(renderer_backend* backend, f32 delta_time);
+b8 vulkan_renderer_backend_initialize(renderer_plugin* backend, const renderer_backend_config* config, u8* out_window_render_target_count);
+void vulkan_renderer_backend_shutdown(renderer_plugin* backend);
+void vulkan_renderer_backend_on_resized(renderer_plugin* backend, u16 width, u16 height);
+b8 vulkan_renderer_backend_begin_frame(renderer_plugin* backend, f32 delta_time);
+b8 vulkan_renderer_backend_end_frame(renderer_plugin* backend, f32 delta_time);
 void vulkan_renderer_viewport_set(vec4 rect);
 void vulkan_renderer_viewport_reset();
 void vulkan_renderer_scissor_set(vec4 rect);
@@ -73,5 +73,3 @@ b8 vulkan_buffer_read(renderbuffer* buffer, u64 offset, u64 size, void** out_mem
 b8 vulkan_buffer_load_range(renderbuffer* buffer, u64 offset, u64 size, const void* data);
 b8 vulkan_buffer_copy_range(renderbuffer* source, u64 source_offset, renderbuffer* dest, u64 dest_offset, u64 size);
 b8 vulkan_buffer_draw(renderbuffer* buffer, u64 offset, u32 element_count, b8 bind_only);
-
-

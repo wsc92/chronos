@@ -5,6 +5,7 @@
 /**
  * @brief Creates a new Vulkan pipeline.
  *
+ * @param context A pointer to the Vulkan context.
  * @param config A constant pointer to configuration to be used in creating the pipeline.
  * @param out_pipeline A pointer to hold the newly-created pipeline.
  * @return True on success; otherwise false.
@@ -13,7 +14,7 @@ b8 vulkan_graphics_pipeline_create(vulkan_context* context, const vulkan_pipelin
 
 /**
  * @brief Destroys the given pipeline.
- * 
+ *
  * @param context A pointer to the Vulkan context.
  * @param pipeline A pointer to the pipeline to be destroyed.
  */
@@ -21,7 +22,7 @@ void vulkan_pipeline_destroy(vulkan_context* context, vulkan_pipeline* pipeline)
 
 /**
  * @brief Binds the given pipeline for use. This must be done within a renderpass.
- * 
+ *
  * @param command_buffer The command buffer to assign the bind command to.
  * @param bind_point The pipeline bind point (typically bind_point_graphics)
  * @param pipeline A pointer to the pipeline to be bound.

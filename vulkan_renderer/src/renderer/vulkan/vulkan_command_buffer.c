@@ -1,6 +1,6 @@
 #include "vulkan_command_buffer.h"
 
-#include "../../core/cmemory.h"
+#include "../../../../engine/src/core/cmemory.h"
 
 void vulkan_command_buffer_allocate(
     vulkan_context* context,
@@ -14,7 +14,7 @@ void vulkan_command_buffer_allocate(
     allocate_info.commandPool = pool;
     allocate_info.level = is_primary ? VK_COMMAND_BUFFER_LEVEL_PRIMARY : VK_COMMAND_BUFFER_LEVEL_SECONDARY;
     allocate_info.commandBufferCount = 1;
-    //allocate_info.pNext = 0;
+    allocate_info.pNext = 0;
 
     out_command_buffer->state = COMMAND_BUFFER_STATE_NOT_ALLOCATED;
     VK_CHECK(vkAllocateCommandBuffers(
@@ -43,7 +43,7 @@ void vulkan_command_buffer_begin(
     b8 is_single_use,
     b8 is_renderpass_continue,
     b8 is_simultaneous_use) {
-
+    
     VkCommandBufferBeginInfo begin_info = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     begin_info.flags = 0;
     if (is_single_use) {

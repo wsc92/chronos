@@ -1,10 +1,10 @@
 #pragma once
 
-#include "../../defines.h"
-#include "../../core/asserts.h"
-#include "../renderer_types.inl"
-#include "../../containers/freelist.h"
-#include "../../containers/hashtable.h"
+#include "../../../../engine/src/defines.h"
+#include "../../../../engine/src/core/asserts.h"
+#include "../../../../engine/src/renderer/renderer_types.inl"
+#include "../../../../engine/src/containers/freelist.h"
+#include "../../../../engine/src/containers/hashtable.h"
 
 #include <vulkan/vulkan.h>
 
@@ -160,7 +160,6 @@ typedef struct vulkan_renderpass {
 typedef struct vulkan_swapchain {
     /** @brief The swapchain image format. */
     VkSurfaceFormatKHR image_format;
-
     /**
      * @brief The maximum number of "images in flight" (images simultaneously being rendered to).
      * Typically one less than the total number of images available.
@@ -566,7 +565,7 @@ typedef struct vulkan_context {
 
     /** @brief Indicates if the swapchain is currently being recreated. */
     b8 recreating_swapchain;
-
+    
     b8 render_flag_changed;
 
     /** @brief The A collection of loaded geometries. @todo TODO: make dynamic */

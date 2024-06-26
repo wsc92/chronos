@@ -1,14 +1,15 @@
-#include "platform.h"
+#include "platform/platform.h"
 
 #if defined(CPLATFORM_APPLE)
 
-#include "../core/logger.h"
-#include "../core/event.h"
-#include "../core/input.h"
-#include "../core/cthread.h"
-#include "../core/cmutex.h"
+#include "core/logger.h"
+#include "core/event.h"
+#include "core/input.h"
+#include "core/kthread.h"
+#include "core/kmutex.h"
+#include "core/kmemory.h"
 
-#include "../containers/darray.h"
+#include "containers/darray.h"
 
 #include <mach/mach_time.h>
 #include <crt_externs.h>
@@ -16,26 +17,25 @@
 #import <Foundation/Foundation.h>
 #import <Cocoa/Cocoa.h>
 #import <QuartzCore/QuartzCore.h>
+#import <QuartzCore/CAMetalLayer.h>
 
 #include <pthread.h>
 #include <errno.h>        // For error reporting
 
-// For surface creation
-#define VK_USE_PLATFORM_METAL_EXT
-#include <vulkan/vulkan.h>
-#include "renderer/vulkan/vulkan_types.inl"
-
 @class ApplicationDelegate;
 @class WindowDelegate;
 @class ContentView;
+
+typedef struct macos_handle_info {
+    CAMetalLayer* layer;
+} macos_handle_info;
  
 typedef struct platform_state {
     ApplicationDelegate* app_delegate;
     WindowDelegate* wnd_delegate;
     NSWindow* window;
     ContentView* view;
-    CAMetalLayer* layer;
-    VkSurfaceKHR surface;
+    macos_handle_info handle;
     b8 quit_flagged;
     u8  modifier_key_states;
 } platform_state;
@@ -119,8 +119,14 @@ void handle_modifier_keys(u32 ns_keycode, u32 modifier_flags);
 
 - (void)mouseMoved:(NSEvent *)event {
     const NSPoint pos = [event locationInWindow];
+
+    // Need to invert Y on macOS, since origin is bottom-left.
+    // Also need to scale the mouse position by the device pixel ratio so screen lookups are correct.
+    NSSize window_size = state_ptr->handle.layer.drawableSize;
+    i16 x = pos.x * state_ptr->handle.layer.contentsScale;
+    i16 y = window_size.height - (pos.y * state_ptr->handle.layer.contentsScale);
     
-    input_process_mouse_move((i16)pos.x, (i16)pos.y);
+    input_process_mouse_move(x, y);
 }
 
 - (void)rightMouseDown:(NSEvent *)event {
@@ -256,8 +262,8 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     event_context context;
     CGSize viewSize = state_ptr->view.bounds.size;
     NSSize newDrawableSize = [state_ptr->view convertSizeToBacking:viewSize];
-    state_ptr->layer.drawableSize = newDrawableSize;
-    state_ptr->layer.contentsScale = state_ptr->view.window.backingScaleFactor;
+    state_ptr->handle.layer.drawableSize = newDrawableSize;
+    state_ptr->handle.layer.contentsScale = state_ptr->view.window.backingScaleFactor;
 
     context.data.u16[0] = (u16)newDrawableSize.width;
     context.data.u16[1] = (u16)newDrawableSize.height;
@@ -278,8 +284,8 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     event_context context;
     CGSize viewSize = state_ptr->view.bounds.size;
     NSSize newDrawableSize = [state_ptr->view convertSizeToBacking:viewSize];
-    state_ptr->layer.drawableSize = newDrawableSize;
-    state_ptr->layer.contentsScale = state_ptr->view.window.backingScaleFactor;
+    state_ptr->handle.layer.drawableSize = newDrawableSize;
+    state_ptr->handle.layer.contentsScale = state_ptr->view.window.backingScaleFactor;
 
     context.data.u16[0] = (u16)newDrawableSize.width;
     context.data.u16[1] = (u16)newDrawableSize.height;
@@ -290,14 +296,8 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 
 @end // WindowDelegate
 
-b8 platform_system_startup(
-    u64* memory_requirement,
-    void* state,
-    const char *application_name,
-    i32 x,
-    i32 y,
-    i32 width,
-    i32 height) {
+b8 platform_system_startup(u64* memory_requirement, void* state, void* config) {
+    platform_system_config* typed_config = (platform_system_config*)config;
     *memory_requirement = sizeof(platform_state);
     if (state == 0) {
         return true;
@@ -312,7 +312,7 @@ b8 platform_system_startup(
     // App delegate creation
     state_ptr->app_delegate = [[ApplicationDelegate alloc] init];
     if (!state_ptr->app_delegate) {
-        CERROR("Failed to create application delegate")
+        KERROR("Failed to create application delegate")
         return false;
     }
     [NSApp setDelegate:state_ptr->app_delegate];
@@ -320,18 +320,18 @@ b8 platform_system_startup(
     // Window delegate creation
     state_ptr->wnd_delegate = [[WindowDelegate alloc] initWithState:state];
     if (!state_ptr->wnd_delegate) {
-        CERROR("Failed to create window delegate")
+        KERROR("Failed to create window delegate")
         return false;
     }
 
     // Window creation
     state_ptr->window = [[NSWindow alloc]
-        initWithContentRect:NSMakeRect(x, y, width, height)
+        initWithContentRect:NSMakeRect(typed_config->x, typed_config->y, typed_config->width, typed_config->height)
         styleMask:NSWindowStyleMaskMiniaturizable|NSWindowStyleMaskTitled|NSWindowStyleMaskClosable|NSWindowStyleMaskResizable
         backing:NSBackingStoreBuffered
         defer:NO];
     if (!state_ptr->window) {
-        CERROR("Failed to create window");
+        KERROR("Failed to create window");
         return false;
     }
 
@@ -340,9 +340,9 @@ b8 platform_system_startup(
     [state_ptr->view setWantsLayer:YES];
 
     // Layer creation
-    state_ptr->layer = [CAMetalLayer layer];
-    if (!state_ptr->layer) {
-        CERROR("Failed to create layer for view");
+    state_ptr->handle.layer = [CAMetalLayer layer];
+    if (!state_ptr->handle.layer) {
+        KERROR("Failed to create layer for view");
     }
 
 
@@ -350,7 +350,7 @@ b8 platform_system_startup(
     [state_ptr->window setLevel:NSNormalWindowLevel];
     [state_ptr->window setContentView:state_ptr->view];
     [state_ptr->window makeFirstResponder:state_ptr->view];
-    [state_ptr->window setTitle:@(application_name)];
+    [state_ptr->window setTitle:@(typed_config->application_name)];
     [state_ptr->window setDelegate:state_ptr->wnd_delegate];
     [state_ptr->window setAcceptsMouseMovedEvents:YES];
     [state_ptr->window setRestorable:NO];
@@ -366,30 +366,30 @@ b8 platform_system_startup(
     [state_ptr->window makeKeyAndOrderFront:nil];
 
     // Handle content scaling for various fidelity displays (i.e. Retina)
-    state_ptr->layer.bounds = state_ptr->view.bounds;
+    state_ptr->handle.layer.bounds = state_ptr->view.bounds;
     // It's important to set the drawableSize to the actual backing pixels. When rendering
     // full-screen, we can skip the macOS compositor if the size matches the display size.
-    state_ptr->layer.drawableSize = [state_ptr->view convertSizeToBacking:state_ptr->view.bounds.size];
+    state_ptr->handle.layer.drawableSize = [state_ptr->view convertSizeToBacking:state_ptr->view.bounds.size];
 
     // In its implementation of vkGetPhysicalDeviceSurfaceCapabilitiesKHR, MoltenVK takes into
     // consideration both the size (in points) of the bounds, and the contentsScale of the
     // CAMetalLayer from which the Vulkan surface was created.
     // See also https://github.com/KhronosGroup/MoltenVK/issues/428
-    state_ptr->layer.contentsScale = state_ptr->view.window.backingScaleFactor;
-    CDEBUG("contentScale: %f", state_ptr->layer.contentsScale);
+    state_ptr->handle.layer.contentsScale = state_ptr->view.window.backingScaleFactor;
+    KDEBUG("contentScale: %f", state_ptr->handle.layer.contentsScale);
 
-    [state_ptr->view setLayer:state_ptr->layer];
+    [state_ptr->view setLayer:state_ptr->handle.layer];
 
     // This is set to NO by default, but is also important to ensure we can bypass the compositor
     // in full-screen mode
     // See "Direct to Display" http://metalkit.org/2017/06/30/introducing-metal-2.html.
-    state_ptr->layer.opaque = YES;
+    state_ptr->handle.layer.opaque = YES;
 
     // Fire off a resize event to make sure the framebuffer is the right size.
     // Again, this should be the actual backing framebuffer size (taking into account pixel density).
     event_context context;
-    context.data.u16[0] = (u16)state_ptr->layer.drawableSize.width;
-    context.data.u16[1] = (u16)state_ptr->layer.drawableSize.height;
+    context.data.u16[0] = (u16)state_ptr->handle.layer.drawableSize.width;
+    context.data.u16[1] = (u16)state_ptr->handle.layer.drawableSize.height;
     event_fire(EVENT_CODE_RESIZED, 0, context);
 
     return true;
@@ -507,6 +507,16 @@ i32 platform_get_processor_count() {
     return [[NSProcessInfo processInfo] processorCount];
 }
 
+void platform_get_handle_info(u64 *out_size, void *memory) {
+
+    *out_size = sizeof(macos_handle_info);
+    if (!memory) {
+        return;
+    }
+
+    kcopy_memory(memory, &state_ptr->handle, *out_size);
+}
+
 // NOTE: Begin threads.
 
 b8 kthread_create(pfn_thread_start start_function_ptr, void* params, b8 auto_detach, kthread* out_thread) {
@@ -519,17 +529,17 @@ b8 kthread_create(pfn_thread_start start_function_ptr, void* params, b8 auto_det
     if (result != 0) {
         switch (result) {
             case EAGAIN:
-                CERROR("Failed to create thread: insufficient resources to create another thread.");
+                KERROR("Failed to create thread: insufficient resources to create another thread.");
                 return false;
             case EINVAL:
-                CERROR("Failed to create thread: invalid settings were passed in attributes..");
+                KERROR("Failed to create thread: invalid settings were passed in attributes..");
                 return false;
             default:
-                CERROR("Failed to create thread: an unhandled error has occurred. errno=%i", result);
+                KERROR("Failed to create thread: an unhandled error has occurred. errno=%i", result);
                 return false;
         }
     }
-    CDEBUG("Starting process on thread id: %#x", out_thread->thread_id);
+    KDEBUG("Starting process on thread id: %#x", out_thread->thread_id);
 
     // Only save off the handle if not auto-detaching.
     if (!auto_detach) {
@@ -541,13 +551,13 @@ b8 kthread_create(pfn_thread_start start_function_ptr, void* params, b8 auto_det
         if (result != 0) {
             switch (result) {
                 case EINVAL:
-                    CERROR("Failed to detach newly-created thread: thread is not a joinable thread.");
+                    KERROR("Failed to detach newly-created thread: thread is not a joinable thread.");
                     return false;
                 case ESRCH:
-                    CERROR("Failed to detach newly-created thread: no thread with the id %#x could be found.", out_thread->thread_id);
+                    KERROR("Failed to detach newly-created thread: no thread with the id %#x could be found.", out_thread->thread_id);
                     return false;
                 default:
-                    CERROR("Failed to detach newly-created thread: an unknown error has occurred. errno=%i", result);
+                    KERROR("Failed to detach newly-created thread: an unknown error has occurred. errno=%i", result);
                     return false;
             }
         }
@@ -556,23 +566,23 @@ b8 kthread_create(pfn_thread_start start_function_ptr, void* params, b8 auto_det
     return true;
 }
 
-void cthread_destroy(cthread* thread) {
-    cthread_cancel(thread);
+void kthread_destroy(kthread* thread) {
+    kthread_cancel(thread);
 }
 
-void cthread_detach(cthread* thread) {
+void kthread_detach(kthread* thread) {
     if (thread->internal_data) {
         i32 result = pthread_detach(*(pthread_t*)thread->internal_data);
         if (result != 0) {
             switch (result) {
                 case EINVAL:
-                    CERROR("Failed to detach thread: thread is not a joinable thread.");
+                    KERROR("Failed to detach thread: thread is not a joinable thread.");
                     break;
                 case ESRCH:
-                    CERROR("Failed to detach thread: no thread with the id %#x could be found.", thread->thread_id);
+                    KERROR("Failed to detach thread: no thread with the id %#x could be found.", thread->thread_id);
                     break;
                 default:
-                    CERROR("Failed to detach thread: an unknown error has occurred. errno=%i", result);
+                    KERROR("Failed to detach thread: an unknown error has occurred. errno=%i", result);
                     break;
             }
         }
@@ -581,7 +591,7 @@ void cthread_detach(cthread* thread) {
     }
 }
 
-void cthread_cancel(cthread* thread) {
+void kthread_cancel(kthread* thread) {
     if (thread->internal_data) {
         i32 result = pthread_cancel(*(pthread_t*)thread->internal_data);
         if (result != 0) {
@@ -600,12 +610,12 @@ void cthread_cancel(cthread* thread) {
     }
 }
 
-b8 cthread_is_active(cthread* thread) {
+b8 kthread_is_active(kthread* thread) {
     // TODO: Find a better way to verify this.
     return thread->internal_data != 0;
 }
 
-void cthread_sleep(cthread* thread, u64 ms) {
+void kthread_sleep(kthread* thread, u64 ms) {
     platform_sleep(ms);
 }
 
@@ -616,7 +626,7 @@ u64 get_thread_id() {
 
 
 // NOTE: Begin mutexes
-b8 cmutex_create(cmutex* out_mutex) {
+b8 kmutex_create(kmutex* out_mutex) {
     if (!out_mutex) {
         return false;
     }
@@ -625,7 +635,7 @@ b8 cmutex_create(cmutex* out_mutex) {
     pthread_mutex_t mutex;
     i32 result = pthread_mutex_init(&mutex, 0);
     if (result != 0) {
-        CERROR("Mutex creation failure!");
+        KERROR("Mutex creation failure!");
         return false;
     }
 
@@ -636,7 +646,7 @@ b8 cmutex_create(cmutex* out_mutex) {
     return true;
 }
 
-void cmutex_destroy(cmutex* mutex) {
+void kmutex_destroy(kmutex* mutex) {
     if (mutex) {
         i32 result = pthread_mutex_destroy((pthread_mutex_t*)mutex->internal_data);
         switch (result) {
@@ -644,13 +654,13 @@ void cmutex_destroy(cmutex* mutex) {
                 // KTRACE("Mutex destroyed.");
                 break;
             case EBUSY:
-                CERROR("Unable to destroy mutex: mutex is locked or referenced.");
+                KERROR("Unable to destroy mutex: mutex is locked or referenced.");
                 break;
             case EINVAL:
-                CERROR("Unable to destroy mutex: the value specified by mutex is invalid.");
+                KERROR("Unable to destroy mutex: the value specified by mutex is invalid.");
                 break;
             default:
-                CERROR("An handled error has occurred while destroy a mutex: errno=%i", result);
+                KERROR("An handled error has occurred while destroy a mutex: errno=%i", result);
                 break;
         }
 
@@ -659,7 +669,7 @@ void cmutex_destroy(cmutex* mutex) {
     }
 }
 
-b8 cmutex_lock(cmutex* mutex) {
+b8 kmutex_lock(kmutex* mutex) {
     if (!mutex) {
         return false;
     }
@@ -671,24 +681,24 @@ b8 cmutex_lock(cmutex* mutex) {
             // KTRACE("Obtained mutex lock.");
             return true;
         case EOWNERDEAD:
-            CERROR("Owning thread terminated while mutex still active.");
+            KERROR("Owning thread terminated while mutex still active.");
             return false;
         case EAGAIN:
-            CERROR("Unable to obtain mutex lock: the maximum number of recursive mutex locks has been reached.");
+            KERROR("Unable to obtain mutex lock: the maximum number of recursive mutex locks has been reached.");
             return false;
         case EBUSY:
-            CERROR("Unable to obtain mutex lock: a mutex lock already exists.");
+            KERROR("Unable to obtain mutex lock: a mutex lock already exists.");
             return false;
         case EDEADLK:
-            CERROR("Unable to obtain mutex lock: a mutex deadlock was detected.");
+            KERROR("Unable to obtain mutex lock: a mutex deadlock was detected.");
             return false;
         default:
-            CERROR("An handled error has occurred while obtaining a mutex lock: errno=%i", result);
+            KERROR("An handled error has occurred while obtaining a mutex lock: errno=%i", result);
             return false;
     }
 }
 
-b8 cmutex_unlock(cmutex* mutex) {
+b8 kmutex_unlock(kmutex* mutex) {
     if (!mutex) {
         return false;
     }
@@ -699,13 +709,13 @@ b8 cmutex_unlock(cmutex* mutex) {
                 // KTRACE("Freed mutex lock.");
                 return true;
             case EOWNERDEAD:
-                CERROR("Unable to unlock mutex: owning thread terminated while mutex still active.");
+                KERROR("Unable to unlock mutex: owning thread terminated while mutex still active.");
                 return false;
             case EPERM:
-                CERROR("Unable to unlock mutex: mutex not owned by current thread.");
+                KERROR("Unable to unlock mutex: mutex not owned by current thread.");
                 return false;
             default:
-                CERROR("An handled error has occurred while unlocking a mutex lock: errno=%i", result);
+                KERROR("An handled error has occurred while unlocking a mutex lock: errno=%i", result);
                 return false;
         }
     }
@@ -716,33 +726,7 @@ b8 cmutex_unlock(cmutex* mutex) {
 
 
 
-void platform_get_required_extension_names(const char ***names_darray) {
-    darray_push(*names_darray, &"VK_EXT_metal_surface");
-    // Required for macos
-    darray_push(*names_darray, &VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
-}
 
-b8 platform_create_vulkan_surface(vulkan_context *context) {
-    if (!state_ptr) {
-        return false;
-    }
-
-    VkMetalSurfaceCreateInfoEXT create_info = {VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT};
-    create_info.pLayer = state_ptr->layer;
-
-    VkResult result = vkCreateMetalSurfaceEXT(
-        context->instance, 
-        &create_info,
-        context->allocator,
-        &state_ptr->surface);
-    if (result != VK_SUCCESS) {
-        CFATAL("Vulkan surface creation failed.");
-        return false;
-    }
-
-    context->surface = state_ptr->surface;
-    return true;
-}
 
 keys translate_keycode(u32 ns_keycode) {
     // https://boredzo.org/blog/wp-content/uploads/2007/05/IMTx-virtual-keycodes.pdf
@@ -1056,7 +1040,7 @@ void handle_modifier_keys(u32 ns_keycode, u32 modifier_flags) {
         MACOS_LSHIFT_MASK, 
         MACOS_RSHIFT_MASK);
 
-    CTRACE("modifier flags keycode: %u", ns_keycode);
+    KTRACE("modifier flags keycode: %u", ns_keycode);
 
     // Ctrl
     handle_modifier_key(
