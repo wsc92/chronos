@@ -48,7 +48,7 @@ typedef struct resource_loader {
  * @param config The configuration for this system.
  * @return True on success; otherwise false.
  */
-b8 resource_system_initialize(u64* memory_requirement, void* state, resource_system_config config);
+b8 resource_system_initialize(u64* memory_requirement, void* state, void* config);
 
 /**
  * @brief Shuts down the resource system.

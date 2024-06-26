@@ -30,7 +30,7 @@ typedef struct texture_system_config {
  * @param config The configuration for this system.
  * @return True on success; otherwise false.
  */
-b8 texture_system_initialize(u64* memory_requirement, void* state, texture_system_config config);
+b8 texture_system_initialize(u64* memory_requirement, void* state, void* config);
 
 /**
  * @brief Shuts down the texture system.

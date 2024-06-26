@@ -3,6 +3,7 @@
 #include "cmemory.h"
 #include "logger.h"
 #include "cstring.h"
+#include "event.h"
 
 #include "console.h"
 
@@ -22,7 +23,7 @@ static cvar_system_state* state_ptr;
 
 void cvar_register_console_commands();
 
-b8 cvar_initialize(u64* memory_requirement, void* memory) {
+b8 cvar_initialize(u64* memory_requirement, void* memory, void* config) {
     *memory_requirement = sizeof(cvar_system_state);
 
     if (!memory) {
@@ -95,6 +96,10 @@ b8 cvar_set_int(const char* name, i32 value) {
         cvar_int_entry* entry = &state_ptr->ints[i];
         if (entry->name && strings_equali(name, entry->name)) {
             entry->value = value;
+            // TODO: also pass type?
+            event_context context = {0};
+            string_ncopy(context.data.c, name, 16);
+            event_fire(EVENT_CODE_CVAR_CHANGED, 0, context);
             return true;
         }
     }

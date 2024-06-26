@@ -5,6 +5,10 @@
 struct shader;
 struct shader_uniform;
 
+typedef struct renderer_system_config {
+    char* application_name;
+} renderer_system_config;
+
 /**
  * @brief Initializes the renderer frontend/system. Should be called twice - once
  * to obtain the memory requirement (passing state=0), and a second time passing
@@ -15,7 +19,7 @@ struct shader_uniform;
  * @param application_name The name of the application.
  * @return True on success; otherwise false.
  */
-b8 renderer_system_initialize(u64* memory_requirement, void* state, const char* application_name);
+b8 renderer_system_initialize(u64* memory_requirement, void* state, void* config);
 
 /**
  * @brief Shuts the renderer system/frontend down.

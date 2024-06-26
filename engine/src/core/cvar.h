@@ -2,7 +2,7 @@
 
 #include "../defines.h"
 
-b8 cvar_initialize(u64* memory_requirement, void* memory);
+b8 cvar_initialize(u64* memory_requirement, void* memory, void* config);
 void cvar_shutdown(void* state);
 
 CAPI b8 cvar_create_int(const char* name, i32 value);

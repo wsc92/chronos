@@ -53,7 +53,7 @@ typedef struct geometry_config {
  * @param config The configuration for this system.
  * @return True on success; otherwise false.
  */
-b8 geometry_system_initialize(u64* memory_requirement, void* state, geometry_system_config config);
+b8 geometry_system_initialize(u64* memory_requirement, void* state, void* config);
 
 /**
  * @brief Shuts down the geometry system.
