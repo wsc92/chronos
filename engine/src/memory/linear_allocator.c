@@ -35,7 +35,7 @@ void* linear_allocator_allocate(linear_allocator* allocator, u64 size) {
             return 0;
         }
 
-        void* block = allocator->memory + allocator->allocated;
+        void* block = ((u8*)allocator->memory) + allocator->allocated;
         allocator->allocated += size;
         return block;
     }

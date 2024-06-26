@@ -17,7 +17,7 @@ u8 freelist_should_create_and_destroy() {
     freelist_create(total_size, &memory_requirement, 0, 0);
 
     // Allocate and create the freelist.
-    void* block = callocate(memory_requirement, MEMORY_TAG_APPLICATION);
+    void* block = callocate(memory_requirement, MEMORY_TAG_ENGINE);
     freelist_create(total_size, &memory_requirement, block, &list);
 
     // Verify that the memory was assigned.
@@ -29,7 +29,7 @@ u8 freelist_should_create_and_destroy() {
     // Destroy and verify that the memory was unassigned.
     freelist_destroy(&list);
     expect_should_be(0, list.memory);
-    cfree(block, memory_requirement, MEMORY_TAG_APPLICATION);
+    cfree(block, memory_requirement, MEMORY_TAG_ENGINE);
 
     return true;
 }
@@ -43,7 +43,7 @@ u8 freelist_should_allocate_one_and_free_one() {
     freelist_create(total_size, &memory_requirement, 0, 0);
 
     // Allocate and create the freelist.
-    void* block = callocate(memory_requirement, MEMORY_TAG_APPLICATION);
+    void* block = callocate(memory_requirement, MEMORY_TAG_ENGINE);
     freelist_create(total_size, &memory_requirement, block, &list);
 
     // Allocate some space.
@@ -69,7 +69,7 @@ u8 freelist_should_allocate_one_and_free_one() {
     // Destroy and verify that the memory was unassigned.
     freelist_destroy(&list);
     expect_should_be(0, list.memory);
-    cfree(block, memory_requirement, MEMORY_TAG_APPLICATION);
+    cfree(block, memory_requirement, MEMORY_TAG_ENGINE);
 
     return true;
 }
@@ -83,7 +83,7 @@ u8 freelist_should_allocate_one_and_free_multi() {
     freelist_create(total_size, &memory_requirement, 0, 0);
 
     // Allocate and create the freelist.
-    void* block = callocate(memory_requirement, MEMORY_TAG_APPLICATION);
+    void* block = callocate(memory_requirement, MEMORY_TAG_ENGINE);
     freelist_create(total_size, &memory_requirement, block, &list);
 
     // Allocate some space.
@@ -152,7 +152,7 @@ u8 freelist_should_allocate_one_and_free_multi() {
     // Destroy and verify that the memory was unassigned.
     freelist_destroy(&list);
     expect_should_be(0, list.memory);
-    cfree(block, memory_requirement, MEMORY_TAG_APPLICATION);
+    cfree(block, memory_requirement, MEMORY_TAG_ENGINE);
 
     return true;
 }
@@ -166,7 +166,7 @@ u8 freelist_should_allocate_one_and_free_multi_varying_sizes() {
     freelist_create(total_size, &memory_requirement, 0, 0);
 
     // Allocate and create the freelist.
-    void* block = callocate(memory_requirement, MEMORY_TAG_APPLICATION);
+    void* block = callocate(memory_requirement, MEMORY_TAG_ENGINE);
     freelist_create(total_size, &memory_requirement, block, &list);
 
     // Allocate some space.
@@ -236,7 +236,7 @@ u8 freelist_should_allocate_one_and_free_multi_varying_sizes() {
     // Destroy and verify that the memory was unassigned.
     freelist_destroy(&list);
     expect_should_be(0, list.memory);
-    cfree(block, memory_requirement, MEMORY_TAG_APPLICATION);
+    cfree(block, memory_requirement, MEMORY_TAG_ENGINE);
 
     return true;
 }
@@ -250,7 +250,7 @@ u8 freelist_should_allocate_to_full_and_fail_to_allocate_more() {
     freelist_create(total_size, &memory_requirement, 0, 0);
 
     // Allocate and create the freelist.
-    void* block = callocate(memory_requirement, MEMORY_TAG_APPLICATION);
+    void* block = callocate(memory_requirement, MEMORY_TAG_ENGINE);
     freelist_create(total_size, &memory_requirement, block, &list);
 
     // Allocate all space.
@@ -279,7 +279,7 @@ u8 freelist_should_allocate_to_full_and_fail_to_allocate_more() {
     // Destroy and verify that the memory was unassigned.
     freelist_destroy(&list);
     expect_should_be(0, list.memory);
-    cfree(block, memory_requirement, MEMORY_TAG_APPLICATION);
+    cfree(block, memory_requirement, MEMORY_TAG_ENGINE);
 
     return true;
 }
@@ -348,7 +348,7 @@ u8 freelist_multiple_alloc_and_free_random() {
     freelist_create(total_size, &memory_requirement, 0, 0);
 
     // Allocate and create the freelist.
-    void* block = callocate(memory_requirement, MEMORY_TAG_APPLICATION);
+    void* block = callocate(memory_requirement, MEMORY_TAG_ENGINE);
     freelist_create(total_size, &memory_requirement, block, &list);
 
     // Verify free space.
@@ -406,7 +406,7 @@ u8 freelist_multiple_alloc_and_free_random() {
     // Destroy and verify that the memory was unassigned.
     freelist_destroy(&list);
     expect_should_be(0, list.memory);
-    cfree(block, memory_requirement, MEMORY_TAG_APPLICATION);
+    cfree(block, memory_requirement, MEMORY_TAG_ENGINE);
     return true;
 }
 

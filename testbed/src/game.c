@@ -33,7 +33,7 @@
 b8 configure_render_views(application_config* config);
 
 b8 game_on_event(u16 code, void* sender, void* listener_inst, event_context context) {
-    game* game_inst = (game*)listener_inst;
+    application* game_inst = (application*)listener_inst;
     game_state* state = (game_state*)game_inst->state;
 
     switch (code) {
@@ -47,7 +47,7 @@ b8 game_on_event(u16 code, void* sender, void* listener_inst, event_context cont
 }
 
 b8 game_on_debug_event(u16 code, void* sender, void* listener_inst, event_context data) {
-    game* game_inst = (game*)listener_inst;
+    application* game_inst = (application*)listener_inst;
     game_state* state = (game_state*)game_inst->state;
 
     if (code == EVENT_CODE_DEBUG0) {
@@ -97,18 +97,11 @@ b8 game_on_debug_event(u16 code, void* sender, void* listener_inst, event_contex
 b8 game_on_key(u16 code, void* sender, void* listener_inst, event_context context) {
     // if (code == EVENT_CODE_KEY_PRESSED) {
     //     u16 key_code = context.data.u16[0];
-    //     if (key_code == KEY_ESCAPE) {
-    //         // NOTE: Technically firing an event to itself, but there may be other listeners.
-    //         event_context data = {};
-    //         event_fire(EVENT_CODE_APPLICATION_QUIT, 0, data);
-    //
-    //         // Block anything else from processing this.
-    //         return true;
-    //     } else if (key_code == KEY_A) {
+    //     if (key_code == KEY_A) {
     //         // Example on checking for a key
     //         CDEBUG("Explicit - A key pressed!");
     //     } else {
-    //         CDEBUG("'%s' key pressed in window.", input_keycode_str(key_code));
+    //         // CTRACE("'%s' key pressed in window.", input_keycode_str(key_code));
     //     }
     // } else if (code == EVENT_CODE_KEY_RELEASED) {
     //     u16 key_code = context.data.u16[0];
@@ -116,13 +109,13 @@ b8 game_on_key(u16 code, void* sender, void* listener_inst, event_context contex
     //         // Example on checking for a key
     //         CDEBUG("Explicit - B key released!");
     //     } else {
-    //         CDEBUG("'%s' key released in window.", input_keycode_str(key_code));
+    //         // CTRACE("'%s' key released in window.", input_keycode_str(key_code));
     //     }
     // }
     return false;
 }
 
-b8 game_boot(struct game* game_inst) {
+b8 game_boot(struct application* game_inst) {
     CINFO("Booting testbed...");
 
     debug_console_create();
@@ -170,7 +163,7 @@ b8 game_boot(struct game* game_inst) {
     return true;
 }
 
-b8 game_initialize(game* game_inst) {
+b8 game_initialize(application* game_inst) {
     CDEBUG("game_initialize() called!");
 
     debug_console_load();
@@ -309,8 +302,8 @@ b8 game_initialize(game* game_inst) {
     state->ui_meshes[0].generation = 0;
 
     // Move and rotate it some.
-    //quat rotation = quat_from_axis_angle((vec3){0, 0, 1}, deg_to_rad(-45.0f), false);
-    //transform_translate_rotate(&state->ui_meshes[0].transform, (vec3){5, 5, 0}, rotation);
+    // quat rotation = quat_from_axis_angle((vec3){0, 0, 1}, deg_to_rad(-45.0f), false);
+    // transform_translate_rotate(&state->ui_meshes[0].transform, (vec3){5, 5, 0}, rotation);
     transform_translate(&state->ui_meshes[0].transform, (vec3){650, 5, 0});
 
     // TODO: end temp load/prepare stuff
@@ -327,7 +320,10 @@ b8 game_initialize(game* game_inst) {
     event_register(EVENT_CODE_KEY_PRESSED, game_inst, game_on_key);
     event_register(EVENT_CODE_KEY_RELEASED, game_inst, game_on_key);
 
-    czero_memory(&game_inst->frame_data, sizeof(game_frame_data));
+    czero_memory(&game_inst->frame_data, sizeof(app_frame_data));
+
+    czero_memory(&state->update_clock, sizeof(clock));
+    czero_memory(&state->render_clock, sizeof(clock));
 
     czero_memory(&state->update_clock, sizeof(clock));
     czero_memory(&state->render_clock, sizeof(clock));
@@ -335,7 +331,7 @@ b8 game_initialize(game* game_inst) {
     return true;
 }
 
-void game_shutdown(game* game_inst) {
+void game_shutdown(application* game_inst) {
     game_state* state = (game_state*)game_inst->state;
 
     // TODO: Temp
@@ -344,6 +340,8 @@ void game_shutdown(game* game_inst) {
     // Destroy ui texts
     ui_text_destroy(&state->test_text);
     ui_text_destroy(&state->test_sys_text);
+
+    debug_console_unload();
 
     event_unregister(EVENT_CODE_DEBUG0, game_inst, game_on_debug_event);
     event_unregister(EVENT_CODE_DEBUG1, game_inst, game_on_debug_event);
@@ -354,7 +352,7 @@ void game_shutdown(game* game_inst) {
     event_unregister(EVENT_CODE_KEY_RELEASED, game_inst, game_on_key);
 }
 
-b8 game_update(game* game_inst, f32 delta_time) {
+b8 game_update(application* game_inst, f32 delta_time) {
     // Ensure this is cleaned up to avoid leaking memory.
     // TODO: Need a version of this that uses the frame allocator.
     if (game_inst->frame_data.world_geometries) {
@@ -366,7 +364,7 @@ b8 game_update(game* game_inst, f32 delta_time) {
     linear_allocator_free_all(&game_inst->frame_allocator);
 
     // Clear frame data
-    czero_memory(&game_inst->frame_data, sizeof(game_frame_data));
+    czero_memory(&game_inst->frame_data, sizeof(app_frame_data));
 
     game_state* state = (game_state*)game_inst->state;
 
@@ -429,8 +427,8 @@ b8 game_update(game* game_inst, f32 delta_time) {
                 //     vec3 extents_min = vec3_mul_mat4(g->extents.min, model);
                 //     vec3 extents_max = vec3_mul_mat4(g->extents.max, model);
 
-                //     f32 min = CMIN(CMIN(extents_min.x, extents_min.y), extents_min.z);
-                //     f32 max = CMAX(CMAX(extents_max.x, extents_max.y), extents_max.z);
+                //     f32 min = KMIN(KMIN(extents_min.x, extents_min.y), extents_min.z);
+                //     f32 max = KMAX(KMAX(extents_max.x, extents_max.y), extents_max.z);
                 //     f32 diff = kabs(max - min);
                 //     f32 radius = diff * 0.5f;
 
@@ -511,7 +509,7 @@ VSync: %s Drawn: %-5u Hovered: %s%u",
     return true;
 }
 
-b8 game_render(game* game_inst, struct render_packet* packet, f32 delta_time) {
+b8 game_render(application* game_inst, struct render_packet* packet, f32 delta_time) {
     game_state* state = (game_state*)game_inst->state;
 
     clock_start(&state->render_clock);
@@ -530,6 +528,7 @@ b8 game_render(game* game_inst, struct render_packet* packet, f32 delta_time) {
         return false;
     }
 
+    // World
     // TODO: performs a lookup on every frame.
     if (!render_view_system_build_packet(render_view_system_get("world"), &game_inst->frame_allocator, game_inst->frame_data.world_geometries, &packet->views[1])) {
         CERROR("Failed to build packet for view 'world_opaque'.");
@@ -565,6 +564,7 @@ b8 game_render(game* game_inst, struct render_packet* packet, f32 delta_time) {
         texts[2] = debug_console_text;
         texts[3] = debug_console_get_entry_text();
     }
+
     ui_packet.texts = texts;
     if (!render_view_system_build_packet(render_view_system_get("ui"), &game_inst->frame_allocator, &ui_packet, &packet->views[2])) {
         CERROR("Failed to build packet for view 'ui'.");
@@ -589,7 +589,7 @@ b8 game_render(game* game_inst, struct render_packet* packet, f32 delta_time) {
     return true;
 }
 
-void game_on_resize(game* game_inst, u32 width, u32 height) {
+void game_on_resize(application* game_inst, u32 width, u32 height) {
     game_state* state = (game_state*)game_inst->state;
 
     state->width = width;
@@ -736,9 +736,7 @@ b8 configure_render_views(application_config* config) {
     renderpass_config world_pick_pass = {0};
     world_pick_pass.name = "Renderpass.Builtin.WorldPick";
     world_pick_pass.render_area = (vec4){0, 0, (f32)config->start_width, (f32)config->start_height};
-    //  HACK: Clearing to white for better visibility
-    //  TODO: Clear to black, as 0 is invalid id.
-    world_pick_pass.clear_colour = (vec4){1.0f, 1.0f, 1.0f, 1.0f};
+    world_pick_pass.clear_colour = (vec4){1.0f, 1.0f, 1.0f, 1.0f};  // HACK: clearing to white for better visibility// TODO: Clear to black, as 0 is invalid id.
     world_pick_pass.clear_flags = RENDERPASS_CLEAR_COLOUR_BUFFER_FLAG | RENDERPASS_CLEAR_DEPTH_BUFFER_FLAG;
     world_pick_pass.depth = 1.0f;
     world_pick_pass.stencil = 0;
