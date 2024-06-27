@@ -1,7 +1,7 @@
 #include "engine.h"
 #include "../application_types.h"
 
-#include "../version.h"
+//#include "../version.h"
 
 #include "../platform/platform.h"
 #include "cmemory.h"
@@ -88,7 +88,7 @@ b8 engine_create(application* game_inst) {
     }
 
     // Report engine version
-    CINFO("Chronos Engine v. %s", CVERSION);
+    //CINFO("Chronos Engine v. %s", CVERSION);
 
     // Initialize the game.
     if (!engine_state->game_inst->initialize(engine_state->game_inst)) {

@@ -40,7 +40,7 @@ b8 platform_create_vulkan_surface(vulkan_context *context) {
         context->allocator,
         &context->surface);
     if (result != VK_SUCCESS) {
-        KFATAL("Vulkan surface creation failed.");
+        CFATAL("Vulkan surface creation failed.");
         return false;
     }
 

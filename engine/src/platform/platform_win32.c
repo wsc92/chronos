@@ -3,14 +3,14 @@
 // Windows platform layer.
 #if CPLATFORM_WINDOWS
 
-#include "core/logger.h"
-#include "core/input.h"
-#include "core/event.h"
-#include "core/kthread.h"
-#include "core/kmutex.h"
-#include "core/kmemory.h"
+#include "../core/logger.h"
+#include "../core/input.h"
+#include "../core/event.h"
+#include "../core/cthread.h"
+#include "../core/cmutex.h"
+#include "../core/cmemory.h"
 
-#include "containers/darray.h"
+#include "../containers/darray.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -108,7 +108,7 @@ b8 platform_system_startup(u64 *memory_requirement, void *state, void *config) {
     if (handle == 0) {
         MessageBoxA(NULL, "Window creation failed!", "Error!", MB_ICONEXCLAMATION | MB_OK);
 
-        KFATAL("Window creation failed!");
+        CFATAL("Window creation failed!");
         return false;
     } else {
         state_ptr->handle.hwnd = handle;
@@ -204,7 +204,7 @@ void platform_sleep(u64 ms) {
 i32 platform_get_processor_count() {
     SYSTEM_INFO sysinfo;
     GetSystemInfo(&sysinfo);
-    KINFO("%i processor cores detected.", sysinfo.dwNumberOfProcessors);
+    CINFO("%i processor cores detected.", sysinfo.dwNumberOfProcessors);
     return sysinfo.dwNumberOfProcessors;
 }
 
@@ -214,12 +214,12 @@ void platform_get_handle_info(u64 *out_size, void *memory) {
         return;
     }
 
-    kcopy_memory(memory, &state_ptr->handle, *out_size);
+    ccopy_memory(memory, &state_ptr->handle, *out_size);
 }
 
 
 // NOTE: Begin threads
-b8 kthread_create(pfn_thread_start start_function_ptr, void *params, b8 auto_detach, kthread *out_thread) {
+b8 cthread_create(pfn_thread_start start_function_ptr, void *params, b8 auto_detach, cthread *out_thread) {
     if (!start_function_ptr) {
         return false;
     }
@@ -231,7 +231,7 @@ b8 kthread_create(pfn_thread_start start_function_ptr, void *params, b8 auto_det
         params,                                      // param to pass to thread
         0,
         (DWORD *)&out_thread->thread_id);
-    KDEBUG("Starting process on thread id: %#x", out_thread->thread_id);
+    CDEBUG("Starting process on thread id: %#x", out_thread->thread_id);
     if (!out_thread->internal_data) {
         return false;
     }
@@ -241,7 +241,7 @@ b8 kthread_create(pfn_thread_start start_function_ptr, void *params, b8 auto_det
     return true;
 }
 
-void kthread_destroy(kthread *thread) {
+void cthread_destroy(cthread *thread) {
     if (thread && thread->internal_data) {
         DWORD exit_code;
         GetExitCodeThread(thread->internal_data, &exit_code);
@@ -254,21 +254,21 @@ void kthread_destroy(kthread *thread) {
     }
 }
 
-void kthread_detach(kthread *thread) {
+void cthread_detach(cthread *thread) {
     if (thread && thread->internal_data) {
         CloseHandle(thread->internal_data);
         thread->internal_data = 0;
     }
 }
 
-void kthread_cancel(kthread *thread) {
+void cthread_cancel(cthread *thread) {
     if (thread && thread->internal_data) {
         TerminateThread(thread->internal_data, 0);
         thread->internal_data = 0;
     }
 }
 
-b8 kthread_is_active(kthread *thread) {
+b8 cthread_is_active(cthread *thread) {
     if (thread && thread->internal_data) {
         DWORD exit_code = WaitForSingleObject(thread->internal_data, 0);
         if (exit_code == WAIT_TIMEOUT) {
@@ -278,7 +278,7 @@ b8 kthread_is_active(kthread *thread) {
     return false;
 }
 
-void kthread_sleep(kthread *thread, u64 ms) {
+void cthread_sleep(cthread *thread, u64 ms) {
     platform_sleep(ms);
 }
 
@@ -289,21 +289,21 @@ u64 get_thread_id() {
 // NOTE: End threads.
 
 // NOTE: Begin mutexes
-b8 kmutex_create(kmutex *out_mutex) {
+b8 cmutex_create(cmutex *out_mutex) {
     if (!out_mutex) {
         return false;
     }
 
     out_mutex->internal_data = CreateMutex(0, 0, 0);
     if (!out_mutex->internal_data) {
-        KERROR("Unable to create mutex.");
+        CERROR("Unable to create mutex.");
         return false;
     }
     // KTRACE("Created mutex.");
     return true;
 }
 
-void kmutex_destroy(kmutex *mutex) {
+void cmutex_destroy(cmutex *mutex) {
     if (mutex && mutex->internal_data) {
         CloseHandle(mutex->internal_data);
         // KTRACE("Destroyed mutex.");
@@ -311,7 +311,7 @@ void kmutex_destroy(kmutex *mutex) {
     }
 }
 
-b8 kmutex_lock(kmutex *mutex) {
+b8 cmutex_lock(cmutex *mutex) {
     if (!mutex) {
         return false;
     }
@@ -325,14 +325,14 @@ b8 kmutex_lock(kmutex *mutex) {
 
             // The thread got ownership of an abandoned mutex.
         case WAIT_ABANDONED:
-            KERROR("Mutex lock failed.");
+            CERROR("Mutex lock failed.");
             return false;
     }
     // KTRACE("Mutex locked.");
     return true;
 }
 
-b8 kmutex_unlock(kmutex *mutex) {
+b8 cmutex_unlock(cmutex *mutex) {
     if (!mutex || !mutex->internal_data) {
         return false;
     }

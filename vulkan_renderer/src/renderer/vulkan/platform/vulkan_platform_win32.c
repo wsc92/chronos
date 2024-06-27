@@ -1,3 +1,5 @@
+#include "../../../../../engine/src/platform/platform.h"
+
 // Windows platform layer.
 #if CPLATFORM_WINDOWS
 
@@ -12,8 +14,8 @@
 #include "../../../../../engine/src/core/cmemory.h"
 #include "../../../../../engine/src/core/logger.h"
 
-#include "../../../../../engine/src/renderer/vulkan/vulkan_types.inl"
-#include "../../../../../engine/src/renderer/vulkan/platform/vulkan_platform.h"
+#include "../vulkan_types.inl"
+#include "vulkan_platform.h"
 
 typedef struct win32_handle_info {
     HINSTANCE h_instance;
@@ -28,7 +30,7 @@ void platform_get_required_extension_names(const char ***names_darray) {
 b8 platform_create_vulkan_surface(vulkan_context *context) {
     u64 size = 0;
     platform_get_handle_info(&size, 0);
-    void *block = kallocate(size, MEMORY_TAG_RENDERER);
+    void *block = callocate(size, MEMORY_TAG_RENDERER);
     platform_get_handle_info(&size, block);
 
     win32_handle_info *handle = (win32_handle_info *)block;
@@ -42,7 +44,7 @@ b8 platform_create_vulkan_surface(vulkan_context *context) {
 
     VkResult result = vkCreateWin32SurfaceKHR(context->instance, &create_info, context->allocator, &context->surface);
     if (result != VK_SUCCESS) {
-        KFATAL("Vulkan surface creation failed.");
+        CFATAL("Vulkan surface creation failed.");
         return false;
     }
 

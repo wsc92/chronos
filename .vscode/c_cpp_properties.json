@@ -47,10 +47,12 @@
             "includePath": [
                 "${workspaceFolder}/engine/src/**",
                 "${workspaceFolder}/vulkan_renderer/src/**",
-                "${workspaceFolder}/standard_ui/src/**",
-                "${workspaceFolder}/testbed_lib/src/**",
-                "${workspaceFolder}/plugin_audio_openal/src/**",
-                "${VULKAN_SDK}/include"
+                "${workspaceFolder}/tools/src/**",
+                "${workspaceFolder}/testbed/src/**",
+                "${workspaceFolder}/versiongen/**",
+                "${workspaceFolder}/tests/src/**",
+                "${VULKAN_SDK}/include",
+                "C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0"
             ],
             "defines": [
                 "_DEBUG",
